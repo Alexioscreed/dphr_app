@@ -1,54 +1,21 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
+// Define an enum for theme modes
 enum AppThemeMode {
+  system,
   light,
   dark,
-  system,
 }
 
 class ThemeProvider with ChangeNotifier {
+  bool _isDarkMode = false;
   AppThemeMode _themeMode = AppThemeMode.system;
+  final String _themePreferenceKey = 'theme_preference';
+  final String _themeModePreferenceKey = 'theme_mode_preference';
 
+  bool get isDarkMode => _isDarkMode;
   AppThemeMode get themeMode => _themeMode;
-
-  bool get isDarkMode {
-    if (_themeMode == AppThemeMode.system) {
-      // Updated for Flutter 24 - using MediaQuery instead of window
-      final brightness = WidgetsBinding.instance.platformDispatcher.platformBrightness;
-      return brightness == Brightness.dark;
-    }
-    return _themeMode == AppThemeMode.dark;
-  }
-
-  ThemeProvider() {
-    _loadThemeMode();
-  }
-
-  // Initialize from cache without async operations
-  void initializeFromCache(int themeModeIndex) {
-    if (themeModeIndex >= 0 && themeModeIndex < AppThemeMode.values.length) {
-      _themeMode = AppThemeMode.values[themeModeIndex];
-      notifyListeners();
-    }
-  }
-
-  Future<void> _loadThemeMode() async {
-    final prefs = await SharedPreferences.getInstance();
-    final themeModeIndex = prefs.getInt('theme_mode') ?? 2; // Default to system
-    _themeMode = AppThemeMode.values[themeModeIndex];
-    notifyListeners();
-  }
-
-  Future<void> setThemeMode(AppThemeMode mode) async {
-    _themeMode = mode;
-    notifyListeners();
-
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setInt('theme_mode', mode.index);
-  }
-
-  // Convert our AppThemeMode to Flutter's ThemeMode
   ThemeMode get flutterThemeMode {
     switch (_themeMode) {
       case AppThemeMode.light:
@@ -56,139 +23,168 @@ class ThemeProvider with ChangeNotifier {
       case AppThemeMode.dark:
         return ThemeMode.dark;
       case AppThemeMode.system:
+      default:
         return ThemeMode.system;
     }
   }
 
-  // Light theme
+  // Light theme with blue accent
   ThemeData get lightTheme {
     return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: const Color(0xFF00796B),
-        brightness: Brightness.light,
+      brightness: Brightness.light,
+      primaryColor: const Color(0xFF2196F3), // Updated to blue
+      colorScheme: ColorScheme.light(
+        primary: const Color(0xFF2196F3), // Updated to blue
+        secondary: const Color(0xFF1976D2), // Darker blue
       ),
-      useMaterial3: true, // Enable Material 3 for Flutter 24
-      fontFamily: 'Roboto',
       appBarTheme: const AppBarTheme(
-        backgroundColor: Color(0xFF00796B),
-        foregroundColor: Colors.white,
-        elevation: 0,
+        backgroundColor: Colors.white,
+        foregroundColor: Colors.black,
+        elevation: 1,
       ),
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: const Color(0xFF00796B),
+          backgroundColor: const Color(0xFF2196F3), // Updated to blue
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
+        ),
+      ),
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF2196F3), // Updated to blue
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF2196F3), // Updated to blue
+          side: const BorderSide(color: Color(0xFF2196F3)), // Updated to blue
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
+        focusedBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Color(0xFF2196F3)), // Updated to blue
+          borderRadius: BorderRadius.circular(8),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF00796B), width: 2),
+      ),
+      scaffoldBackgroundColor: Colors.white,
+      cardTheme: CardTheme(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
       ),
     );
   }
 
-  // Dark theme with maintained green identity
+  // Dark theme with blue accent
   ThemeData get darkTheme {
-    // Dark background colors as requested
-    const backgroundColor = Color(0xFF121212);
-    const surfaceColor = Color(0xFF1E1E1E);
-    const cardColor = Color(0xFF252525);
-
-    // Maintain green/teal identity but adjusted for dark mode
-    const primaryColor = Color(0xFF00A884); // Brighter teal for dark mode (WhatsApp-like)
-
     return ThemeData(
-      colorScheme: ColorScheme.fromSeed(
-        seedColor: primaryColor,
-        brightness: Brightness.dark,
-        background: backgroundColor,
-        surface: surfaceColor,
+      brightness: Brightness.dark,
+      primaryColor: const Color(0xFF2196F3), // Updated to blue
+      colorScheme: ColorScheme.dark(
+        primary: const Color(0xFF2196F3), // Updated to blue
+        secondary: const Color(0xFF64B5F6), // Lighter blue for dark mode
+        surface: const Color(0xFF1E1E1E),
       ),
-      useMaterial3: true, // Enable Material 3 for Flutter 24
-      fontFamily: 'Roboto',
-      scaffoldBackgroundColor: backgroundColor,
-      cardColor: cardColor,
-      dividerColor: const Color(0xFF3A3A3A),
-
-      // App bar with maintained green identity
       appBarTheme: const AppBarTheme(
-        backgroundColor: primaryColor,
+        backgroundColor: Color(0xFF1E1E1E),
         foregroundColor: Colors.white,
         elevation: 0,
-        titleTextStyle: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-        iconTheme: IconThemeData(color: Colors.white),
       ),
-
-      // Button theme with maintained green identity
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
-          backgroundColor: primaryColor,
+          backgroundColor: const Color(0xFF2196F3), // Updated to blue
           foregroundColor: Colors.white,
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(8),
-          ),
         ),
       ),
-
-      // Input decoration with maintained green identity
+      textButtonTheme: TextButtonThemeData(
+        style: TextButton.styleFrom(
+          foregroundColor: const Color(0xFF64B5F6), // Lighter blue for dark mode
+        ),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          foregroundColor: const Color(0xFF64B5F6), // Lighter blue for dark mode
+          side: const BorderSide(color: Color(0xFF64B5F6)), // Lighter blue for dark mode
+        ),
+      ),
       inputDecorationTheme: InputDecorationTheme(
+        focusedBorder: OutlineInputBorder(
+          borderSide: const BorderSide(color: Color(0xFF64B5F6)), // Lighter blue for dark mode
+          borderRadius: BorderRadius.circular(8),
+        ),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: Color(0xFF3A3A3A)),
         ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: primaryColor, width: 2),
-        ),
-        fillColor: surfaceColor,
-        filled: true,
       ),
-
-      // Fix for bottom navigation and selected items
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        backgroundColor: surfaceColor,
-        selectedItemColor: primaryColor, // Bright teal color
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        selectedLabelStyle: TextStyle(
-          color: primaryColor,
-          fontWeight: FontWeight.bold,
+      scaffoldBackgroundColor: const Color(0xFF121212),
+      cardTheme: CardTheme(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
         ),
-        unselectedLabelStyle: TextStyle(
-          color: Colors.grey,
-        ),
-        elevation: 8.0,
-      ),
-
-      // Fix for chip selection in dark mode
-      chipTheme: ChipThemeData(
-        backgroundColor: const Color(0xFF2A2A2A),
-        disabledColor: Colors.grey.shade800,
-        selectedColor: primaryColor.withOpacity(0.3),
-        secondarySelectedColor: primaryColor,
-        padding: const EdgeInsets.all(8),
-        labelStyle: const TextStyle(color: Colors.white),
-        secondaryLabelStyle: const TextStyle(color: Colors.white),
-        brightness: Brightness.dark,
-      ),
-
-      // Ensure text is visible when selected
-      textSelectionTheme: TextSelectionThemeData(
-        cursorColor: primaryColor,
-        selectionColor: primaryColor.withOpacity(0.3),
-        selectionHandleColor: primaryColor,
+        color: const Color(0xFF1E1E1E),
       ),
     );
+  }
+
+  ThemeProvider() {
+    _loadThemePreference();
+  }
+
+  Future<void> _loadThemePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    _isDarkMode = prefs.getBool(_themePreferenceKey) ?? false;
+
+    final themeModeString = prefs.getString(_themeModePreferenceKey);
+    if (themeModeString != null) {
+      _themeMode = _parseThemeMode(themeModeString);
+    }
+
+    notifyListeners();
+  }
+
+  AppThemeMode _parseThemeMode(String value) {
+    switch (value) {
+      case 'light':
+        return AppThemeMode.light;
+      case 'dark':
+        return AppThemeMode.dark;
+      case 'system':
+      default:
+        return AppThemeMode.system;
+    }
+  }
+
+  String _themeModeToPref(AppThemeMode mode) {
+    switch (mode) {
+      case AppThemeMode.light:
+        return 'light';
+      case AppThemeMode.dark:
+        return 'dark';
+      case AppThemeMode.system:
+        return 'system';
+    }
+  }
+
+  Future<void> toggleTheme() async {
+    _isDarkMode = !_isDarkMode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_themePreferenceKey, _isDarkMode);
+    notifyListeners();
+  }
+
+  Future<void> setThemeMode(AppThemeMode mode) async {
+    _themeMode = mode;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_themeModePreferenceKey, _themeModeToPref(mode));
+    notifyListeners();
+  }
+
+  // Method to initialize theme from cache for app initialization
+  Future<void> initializeFromCache() async {
+    await _loadThemePreference();
   }
 }
-

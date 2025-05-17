@@ -1,75 +1,53 @@
 import 'package:flutter/material.dart';
-import 'package:shared_preferences/shared_preferences.dart';
+import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
 import '../providers/theme_provider.dart';
+import '../providers/notification_provider.dart';
 import '../providers/health_record_provider.dart';
+import '../providers/api_provider.dart';
+import '../providers/appointment_provider.dart';
+import '../providers/vital_measurements_provider.dart';
 
 class AppInitializationService {
-  // Singleton pattern
-  static final AppInitializationService _instance = AppInitializationService._internal();
-  factory AppInitializationService() => _instance;
-  AppInitializationService._internal();
-
-  // Flag to track if initialization has been completed
-  bool _isInitialized = false;
-  bool get isInitialized => _isInitialized;
-
-  // Cached data
-  SharedPreferences? _prefs;
-  SharedPreferences? get prefs => _prefs;
-
-  // Initialize all app resources in parallel
-  Future<void> initialize() async {
-    if (_isInitialized) return;
-
-    // Start multiple initialization tasks in parallel
-    final futures = <Future>[];
-
-    // Initialize SharedPreferences
-    futures.add(SharedPreferences.getInstance().then((value) => _prefs = value));
-
-    // Preload any assets or data
-    futures.add(_preloadAssets());
-
-    // Wait for all initialization tasks to complete
-    await Future.wait(futures);
-
-    _isInitialized = true;
+  static Future<void> initialize(BuildContext context) async {
+    await _initializeProviders(context);
+    await _loadInitialData(context);
   }
 
-  // Preload commonly used assets
-  Future<void> _preloadAssets() async {
-    // Preload images if needed
-    PaintingBinding.instance.imageCache.maximumSize = 100; // Set cache size
+  static Future<void> _initializeProviders(BuildContext context) async {
+    // Initialize API provider first
+    final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+    await apiProvider.initialize();
 
-    // Example of preloading an image
-    // await precacheImage(AssetImage('assets/common_image.png'), null);
+    // Initialize auth provider
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    await authProvider.checkAuthStatus();
 
-    // You can preload other assets here
+    // Initialize theme provider
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    await themeProvider.initializeFromCache();
+
+    // Initialize notification provider
+    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+    await notificationProvider.initialize();
   }
 
-  // Initialize providers with cached data
-  void initializeProviders({
-    required AuthProvider authProvider,
-    required ThemeProvider themeProvider,
-    required HealthRecordProvider healthRecordProvider,
-  }) {
-    // Initialize providers with cached data if available
-    if (_prefs != null) {
-      // Example: Initialize theme from cached preferences
-      final themeModeIndex = _prefs!.getInt('theme_mode');
-      if (themeModeIndex != null) {
-        themeProvider.initializeFromCache(themeModeIndex);
-      }
+  static Future<void> _loadInitialData(BuildContext context) async {
+    // Check if user is authenticated before loading data
+    final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
-      // Example: Check if user is logged in from cached token
-      final token = _prefs!.getString('auth_token');
-      if (token != null && token.isNotEmpty) {
-        authProvider.initializeFromCache(token);
-      }
+    if (authProvider.isAuthenticated) {
+      // Load health records
+      final healthRecordProvider = Provider.of<HealthRecordProvider>(context, listen: false);
+      await healthRecordProvider.fetchHealthRecords();
 
-      // Initialize other providers as needed
+      // Load appointments
+      final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
+      await appointmentProvider.fetchAppointments();
+
+      // Load vital measurements
+      final vitalMeasurementsProvider = Provider.of<VitalMeasurementsProvider>(context, listen: false);
+      await vitalMeasurementsProvider.fetchMeasurements();
     }
   }
 }
-

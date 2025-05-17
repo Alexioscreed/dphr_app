@@ -36,29 +36,11 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
 
-    // Apply additional theme overrides for bottom navigation
-    final ThemeData theme = themeProvider.isDarkMode
-        ? themeProvider.darkTheme.copyWith(
-      bottomNavigationBarTheme: const BottomNavigationBarThemeData(
-        selectedItemColor: Color(0xFF00A884),
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        selectedLabelStyle: TextStyle(
-          color: Color(0xFF00A884),
-          fontWeight: FontWeight.bold,
-        ),
-        unselectedLabelStyle: TextStyle(
-          color: Colors.grey,
-        ),
-      ),
-    )
-        : themeProvider.lightTheme;
-
     return MaterialApp(
       title: 'DPHR',
       debugShowCheckedModeBanner: false,
       theme: themeProvider.lightTheme,
-      darkTheme: theme,
+      darkTheme: themeProvider.darkTheme,
       themeMode: themeProvider.flutterThemeMode,
       home: const SplashScreen(),
     );

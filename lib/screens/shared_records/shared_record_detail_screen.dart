@@ -1,74 +1,131 @@
 import 'package:flutter/material.dart';
-import '../../models/api_models.dart';
-import '../../utils/data_transformer.dart';
-import '../health_records/health_record_detail_screen.dart';
+import 'package:provider/provider.dart';
+import '../../providers/api_provider.dart';
+import '../../models/shared_record.dart';
 
-class SharedRecordDetailScreen extends StatelessWidget {
-  final HealthRecordData record;
+class SharedRecordDetailScreen extends StatefulWidget {
+  final String recordId;
 
   const SharedRecordDetailScreen({
     Key? key,
-    required this.record,
+    required this.recordId,
   }) : super(key: key);
 
   @override
+  State<SharedRecordDetailScreen> createState() => _SharedRecordDetailScreenState();
+}
+
+class _SharedRecordDetailScreenState extends State<SharedRecordDetailScreen> {
+  bool _isLoading = false;
+  SharedRecord? _record;
+  String _error = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _loadRecord();
+  }
+
+  Future<void> _loadRecord() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      final record = apiProvider.getSharedRecordById(widget.recordId);
+
+      setState(() {
+        _record = record;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Transform API record to app record for reusing the existing detail screen
-    final appRecord = DataTransformer.transformApiHealthRecordToAppHealthRecord(record);
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Shared Record Details'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.save),
-            onPressed: () {
-              // Save to local records
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Record saved to local records')),
-              );
-            },
-            tooltip: 'Save to My Records',
-          ),
-        ],
+        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+      body: _buildContent(),
+    );
+  }
+
+  Widget _buildContent() {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (_error.isNotEmpty) {
+      return Center(
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            _buildHeader(),
-            const SizedBox(height: 24),
-            _buildDiagnosisSection(),
-            const SizedBox(height: 24),
-            _buildVitalSignsSection(),
-            const SizedBox(height: 24),
-            _buildMedicationsSection(),
-            const SizedBox(height: 24),
-            _buildLabResultsSection(),
-            const SizedBox(height: 24),
-            _buildNotesSection(),
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                      builder: (context) => HealthRecordDetailScreen(record: appRecord),
-                    ),
-                  );
-                },
-                child: const Text('View in Standard Format'),
+            const Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 60,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error: $_error',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.red,
               ),
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _loadRecord,
+              child: const Text('Retry'),
             ),
           ],
         ),
+      );
+    }
+
+    if (_record == null) {
+      return const Center(
+        child: Text(
+          'Record not found',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
+
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16.0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          _buildRecipientInfoCard(),
+          const SizedBox(height: 16),
+          _buildRecordDetailsCard(),
+          const SizedBox(height: 16),
+          _buildFilesCard(),
+          const SizedBox(height: 24),
+          _buildActionButtons(),
+        ],
       ),
     );
   }
 
-  Widget _buildHeader() {
+  Widget _buildRecipientInfoCard() {
     return Card(
       elevation: 2,
       child: Padding(
@@ -76,279 +133,180 @@ class SharedRecordDetailScreen extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Visit: ${record.visitDetails.visitType}',
-              style: const TextStyle(
-                fontSize: 22,
+            const Text(
+              'Recipient Information',
+              style: TextStyle(
+                fontSize: 18,
                 fontWeight: FontWeight.bold,
+                color: Color(0xFF2196F3), // Blue color
               ),
             ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Name', _record!.recipientName),
             const SizedBox(height: 8),
-            Row(
-              children: [
-                const Icon(Icons.calendar_today, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(
-                  record.visitDetails.visitDate,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.local_hospital, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(
-                  record.facilityDetails.name,
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 4),
-            Row(
-              children: [
-                const Icon(Icons.folder, size: 16, color: Colors.grey),
-                const SizedBox(width: 8),
-                Text(
-                  'Visit ID: ${record.visitDetails.id}',
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 16,
-                  ),
-                ),
-              ],
-            ),
+            _buildInfoRow('Email', _record!.recipientEmail),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildDiagnosisSection() {
-    if (record.diagnosisDetails == null || record.diagnosisDetails!.isEmpty) {
-      return const SizedBox.shrink();
+  Widget _buildRecordDetailsCard() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Record Details',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2196F3), // Blue color
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildInfoRow('Record Type', _record!.recordType),
+            const SizedBox(height: 8),
+            _buildInfoRow('Shared Date', _formatDate(_record!.sharedDate)),
+            const SizedBox(height: 8),
+            _buildInfoRow('Expiry Date', _formatDate(_record!.expiryDate)),
+            const SizedBox(height: 8),
+            _buildInfoRow('Status', _record!.status,
+                valueColor: _record!.status == 'Active' ? Colors.green : Colors.red),
+            const SizedBox(height: 16),
+            const Text(
+              'Description',
+              style: TextStyle(
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(_record!.description),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilesCard() {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Files',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Color(0xFF2196F3), // Blue color
+              ),
+            ),
+            const SizedBox(height: 16),
+            ..._record!.files.map((file) => _buildFileItem(file)).toList(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFileItem(String fileName) {
+    IconData iconData;
+    if (fileName.endsWith('.pdf')) {
+      iconData = Icons.picture_as_pdf;
+    } else if (fileName.endsWith('.jpg') || fileName.endsWith('.png')) {
+      iconData = Icons.image;
+    } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
+      iconData = Icons.description;
+    } else {
+      iconData = Icons.insert_drive_file;
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return ListTile(
+      leading: Icon(iconData, color: const Color(0xFF2196F3)), // Blue color
+      title: Text(fileName),
+      trailing: const Icon(Icons.download),
+      onTap: () {
+        // Download or view file
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Downloading $fileName...')),
+        );
+      },
+    );
+  }
+
+  Widget _buildActionButtons() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
-        const Text(
-          'Diagnosis',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: record.diagnosisDetails!.length,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) {
-              final diagnosis = record.diagnosisDetails![index];
-              return ListTile(
-                title: Text(diagnosis.diagnosis),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Certainty: ${diagnosis.certainty}'),
-                    Text('Date: ${diagnosis.diagnosisDate}'),
-                    Text('Description: ${diagnosis.diagnosisDescription}'),
-                  ],
-                ),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // Share record
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Sharing record...')),
               );
             },
+            icon: const Icon(Icons.share),
+            label: const Text('Share'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3), // Blue color
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // Print record
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text('Printing record...')),
+              );
+            },
+            icon: const Icon(Icons.print),
+            label: const Text('Print'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3), // Blue color
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildVitalSignsSection() {
-    if (record.clinicalInformation?.vitalSigns == null || record.clinicalInformation!.vitalSigns!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
+  Widget _buildInfoRow(String label, String value, {Color? valueColor}) {
+    return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Vital Signs',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+        SizedBox(
+          width: 100,
+          child: Text(
+            label,
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+            ),
           ),
         ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: record.clinicalInformation!.vitalSigns!.length,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) {
-              final vitalSign = record.clinicalInformation!.vitalSigns![index];
-              return ListTile(
-                title: Text('Date: ${vitalSign.dateTime.split('T')[0]}'),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    if (vitalSign.bloodPressure != null)
-                      Text('Blood Pressure: ${vitalSign.bloodPressure}'),
-                    if (vitalSign.weight != null)
-                      Text('Weight: ${vitalSign.weight}'),
-                    if (vitalSign.temperature != null)
-                      Text('Temperature: ${vitalSign.temperature}'),
-                    if (vitalSign.height != null)
-                      Text('Height: ${vitalSign.height}'),
-                    if (vitalSign.respiration != null)
-                      Text('Respiration: ${vitalSign.respiration}'),
-                    if (vitalSign.pulseRate != null)
-                      Text('Pulse Rate: ${vitalSign.pulseRate}'),
-                  ],
-                ),
-              );
-            },
+        Expanded(
+          child: Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+            ),
           ),
         ),
       ],
     );
   }
 
-  Widget _buildMedicationsSection() {
-    if (record.medicationDetails == null || record.medicationDetails!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Medications',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: record.medicationDetails!.length,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) {
-              final medication = record.medicationDetails![index];
-              return ListTile(
-                title: Text(medication.medication),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Dosage: ${medication.dosage}'),
-                    Text('Frequency: ${medication.frequency}'),
-                    Text('Duration: ${medication.duration}'),
-                    Text('Start Date: ${medication.startDate}'),
-                    if (medication.endDate != null)
-                      Text('End Date: ${medication.endDate}'),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLabResultsSection() {
-    if (record.labInvestigationDetails == null || record.labInvestigationDetails!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Lab Results',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: record.labInvestigationDetails!.length,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) {
-              final labResult = record.labInvestigationDetails![index];
-              return ListTile(
-                title: Text(labResult.test),
-                subtitle: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Result: ${labResult.result} ${labResult.units}'),
-                    Text('Reference Range: ${labResult.referenceRange}'),
-                    Text('Date: ${labResult.dateTime.split('T')[0]}'),
-                  ],
-                ),
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNotesSection() {
-    if (record.clinicalInformation?.visitNotes == null || record.clinicalInformation!.visitNotes!.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Notes',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: record.clinicalInformation!.visitNotes!.length,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) {
-              final note = record.clinicalInformation!.visitNotes![index];
-              return ListTile(
-                title: Text('Date: ${note.dateTime.split('T')[0]}'),
-                subtitle: Text(note.note),
-              );
-            },
-          ),
-        ),
-      ],
-    );
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
   }
 }
-

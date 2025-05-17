@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/appointment_provider.dart';
-import 'book_appointment_screen.dart';
 import 'appointment_detail_screen.dart';
+import 'book_appointment_screen.dart';
 
 class AppointmentsScreen extends StatefulWidget {
   const AppointmentsScreen({Key? key}) : super(key: key);
@@ -13,13 +13,12 @@ class AppointmentsScreen extends StatefulWidget {
 
 class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTickerProviderStateMixin {
   late TabController _tabController;
-  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
-    _loadAppointments();
+    _tabController = TabController(length: 3, vsync: this);
+    _fetchAppointments();
   }
 
   @override
@@ -28,16 +27,9 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     super.dispose();
   }
 
-  Future<void> _loadAppointments() async {
-    setState(() {
-      _isLoading = true;
-    });
-
-    await Provider.of<AppointmentProvider>(context, listen: false).fetchAppointments();
-
-    setState(() {
-      _isLoading = false;
-    });
+  Future<void> _fetchAppointments() async {
+    final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
+    await appointmentProvider.fetchAppointments();
   }
 
   @override
@@ -51,156 +43,177 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Theme.of(context).primaryColor,
+          labelColor: const Color(0xFF2196F3), // Updated to blue
           unselectedLabelColor: Colors.grey,
-          indicatorColor: Theme.of(context).primaryColor,
+          indicatorColor: const Color(0xFF2196F3), // Updated to blue
           tabs: const [
             Tab(text: 'Upcoming'),
             Tab(text: 'Past'),
+            Tab(text: 'Cancelled'),
           ],
         ),
       ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : TabBarView(
+      body: TabBarView(
         controller: _tabController,
         children: [
-          _buildUpcomingAppointments(),
-          _buildPastAppointments(),
+          _buildAppointmentsList('upcoming'),
+          _buildAppointmentsList('past'),
+          _buildAppointmentsList('cancelled'),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const BookAppointmentScreen(),
-            ),
+            MaterialPageRoute(builder: (context) => const BookAppointmentScreen()),
           );
         },
-        backgroundColor: const Color(0xFF00796B), // Updated to match Dashboard primary color
+        backgroundColor: const Color(0xFF2196F3), // Updated to blue
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildUpcomingAppointments() {
-    final appointmentProvider = Provider.of<AppointmentProvider>(context);
-    final upcomingAppointments = appointmentProvider.upcomingAppointments;
+  Widget _buildAppointmentsList(String type) {
+    return Consumer<AppointmentProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
 
-    if (upcomingAppointments.isEmpty) {
-      return const Center(
-        child: Text(
-          'No upcoming appointments',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: upcomingAppointments.length,
-      itemBuilder: (context, index) {
-        final appointment = upcomingAppointments[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16.0),
-            leading: CircleAvatar(
-              backgroundColor: Theme.of(context).primaryColor,
-              child: const Icon(
-                Icons.calendar_today,
-                color: Colors.white,
-              ),
-            ),
-            title: Text(
-              appointment.doctorName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        if (provider.error.isNotEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 4),
-                Text('Specialty: ${appointment.specialty}'),
-                Text('Date: ${_formatDate(appointment.dateTime)}'),
-                Text('Time: ${_formatTime(appointment.dateTime)}'),
-                Text('Reason: ${appointment.reason}'),
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 60,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error: ${provider.error}',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _fetchAppointments,
+                  child: const Text('Retry'),
+                ),
               ],
             ),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AppointmentDetailScreen(
-                    appointmentId: appointment.id,
+          );
+        }
+
+        final appointments = provider.getAppointmentsByType(type);
+
+        if (appointments.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  type == 'upcoming' ? Icons.event_available : (type == 'past' ? Icons.event_busy : Icons.event_note),
+                  size: 60,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  type == 'upcoming'
+                      ? 'No upcoming appointments'
+                      : (type == 'past' ? 'No past appointments' : 'No cancelled appointments'),
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildPastAppointments() {
-    final appointmentProvider = Provider.of<AppointmentProvider>(context);
-    final pastAppointments = appointmentProvider.pastAppointments;
-
-    if (pastAppointments.isEmpty) {
-      return const Center(
-        child: Text(
-          'No past appointments',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      padding: const EdgeInsets.all(16.0),
-      itemCount: pastAppointments.length,
-      itemBuilder: (context, index) {
-        final appointment = pastAppointments[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16.0),
-            leading: CircleAvatar(
-              backgroundColor: appointment.status == 'completed'
-                  ? Colors.green
-                  : Colors.grey,
-              child: Icon(
-                appointment.status == 'completed'
-                    ? Icons.check
-                    : Icons.cancel,
-                color: Colors.white,
-              ),
-            ),
-            title: Text(
-              appointment.doctorName,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 4),
-                Text('Specialty: ${appointment.specialty}'),
-                Text('Date: ${_formatDate(appointment.dateTime)}'),
-                Text('Status: ${_capitalizeFirstLetter(appointment.status)}'),
+                const SizedBox(height: 8),
+                Text(
+                  type == 'upcoming'
+                      ? 'Book an appointment to get started'
+                      : 'Your appointments will appear here',
+                  style: const TextStyle(
+                    color: Colors.grey,
+                  ),
+                ),
+                if (type == 'upcoming') ...[
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (context) => const BookAppointmentScreen()),
+                      );
+                    },
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF2196F3), // Updated to blue
+                    ),
+                    child: const Text('Book Appointment'),
+                  ),
+                ],
               ],
             ),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => AppointmentDetailScreen(
-                    appointmentId: appointment.id,
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: _fetchAppointments,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16.0),
+            itemCount: appointments.length,
+            itemBuilder: (context, index) {
+              final appointment = appointments[index];
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16.0),
+                elevation: 2,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16.0),
+                  title: Text(
+                    'Dr. ${appointment.doctorName}',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
                   ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      Text('Date: ${_formatDate(appointment.date)}'),
+                      const SizedBox(height: 4),
+                      Text('Time: ${_formatTime(appointment.time)}'),
+                      const SizedBox(height: 4),
+                      Text('Department: ${appointment.department}'),
+                      const SizedBox(height: 4),
+                      Text('Hospital: ${appointment.hospital}'),
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(appointment.status),
+                          borderRadius: BorderRadius.circular(4),
+                        ),
+                        child: Text(
+                          appointment.status,
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => AppointmentDetailScreen(appointmentId: appointment.id),
+                      ),
+                    );
+                  },
                 ),
               );
             },
@@ -214,15 +227,24 @@ class _AppointmentsScreenState extends State<AppointmentsScreen> with SingleTick
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  String _formatTime(DateTime dateTime) {
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
-  String _capitalizeFirstLetter(String text) {
-    if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1);
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return const Color(0xFF2196F3); // Updated to blue
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      case 'rescheduled':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
   }
 }
-

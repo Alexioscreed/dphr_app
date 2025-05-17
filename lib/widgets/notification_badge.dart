@@ -15,9 +15,8 @@ class NotificationBadge extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       child: Container(
-        width: 40,
-        height: 40,
-        margin: const EdgeInsets.all(8.0),
+        width: 48,
+        padding: const EdgeInsets.symmetric(horizontal: 8),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -41,6 +40,7 @@ class NotificationBadge extends StatelessWidget {
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 10,
+                      fontWeight: FontWeight.bold,
                     ),
                     textAlign: TextAlign.center,
                   ),
@@ -52,4 +52,3 @@ class NotificationBadge extends StatelessWidget {
     );
   }
 }
-

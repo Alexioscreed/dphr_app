@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
-import '../../models/health_record.dart';
+import 'package:provider/provider.dart';
+import '../../providers/health_record_provider.dart';
 import 'health_record_detail_screen.dart';
 
 class HealthRecordsScreen extends StatefulWidget {
@@ -10,79 +11,18 @@ class HealthRecordsScreen extends StatefulWidget {
 }
 
 class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
-  bool _isLoading = true;
-  List<HealthRecord> _records = [];
   String _selectedFilter = 'All';
-  final List<String> _filters = ['All', 'Medical', 'Lab Tests', 'Prescriptions', 'Vaccinations'];
+  final List<String> _filters = ['All', 'Examination', 'Laboratory', 'Vaccination', 'Dental', 'Other'];
 
   @override
   void initState() {
     super.initState();
-    _loadRecords();
+    _fetchHealthRecords();
   }
 
-  Future<void> _loadRecords() async {
-    // Simulate loading records from API
-    await Future.delayed(const Duration(seconds: 1));
-
-    setState(() {
-      _records = [
-        HealthRecord(
-          id: '1',
-          title: 'Annual Check-up',
-          date: DateTime(2023, 5, 15),
-          provider: 'Dr. John Smith',
-          type: 'Medical',
-          description: 'Regular annual physical examination',
-          attachments: ['Physical Exam Report', 'Vitals'],
-        ),
-        HealthRecord(
-          id: '2',
-          title: 'Blood Test Results',
-          date: DateTime(2023, 4, 10),
-          provider: 'City Lab',
-          type: 'Lab Tests',
-          description: 'Complete blood count and metabolic panel',
-          attachments: ['CBC Results', 'Metabolic Panel'],
-        ),
-        HealthRecord(
-          id: '3',
-          title: 'Prescription - Metformin',
-          date: DateTime(2023, 3, 22),
-          provider: 'Dr. Sarah Johnson',
-          type: 'Prescriptions',
-          description: 'Metformin 500mg, twice daily',
-          attachments: ['Prescription Details'],
-        ),
-        HealthRecord(
-          id: '4',
-          title: 'COVID-19 Vaccination',
-          date: DateTime(2023, 2, 5),
-          provider: 'City Hospital',
-          type: 'Vaccinations',
-          description: 'COVID-19 Booster Shot',
-          attachments: ['Vaccination Certificate'],
-        ),
-        HealthRecord(
-          id: '5',
-          title: 'Dental Check-up',
-          date: DateTime(2023, 1, 15),
-          provider: 'Dr. Lisa Wong',
-          type: 'Medical',
-          description: 'Regular dental examination and cleaning',
-          attachments: ['Dental X-Rays', 'Treatment Plan'],
-        ),
-      ];
-      _isLoading = false;
-    });
-  }
-
-  List<HealthRecord> _getFilteredRecords() {
-    if (_selectedFilter == 'All') {
-      return _records;
-    } else {
-      return _records.where((record) => record.type == _selectedFilter).toList();
-    }
+  Future<void> _fetchHealthRecords() async {
+    final healthRecordProvider = Provider.of<HealthRecordProvider>(context, listen: false);
+    await healthRecordProvider.fetchHealthRecords();
   }
 
   @override
@@ -99,52 +39,49 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
         children: [
           _buildFilterChips(),
           Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildRecordsList(),
+            child: _buildHealthRecordsList(),
           ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Navigate to add record screen
+          // Navigate to add health record screen
         },
-        backgroundColor: const Color(0xFF00796B), // Updated to match Dashboard primary color
-        child: const Icon(Icons.add, color: Colors.white),
+        backgroundColor: const Color(0xFF2196F3), // Updated to blue
+        child: const Icon(Icons.add),
       ),
     );
   }
 
   Widget _buildFilterChips() {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Container(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
       height: 60,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
         itemCount: _filters.length,
-        padding: const EdgeInsets.symmetric(horizontal: 16.0),
         itemBuilder: (context, index) {
-          final isSelected = _selectedFilter == _filters[index];
+          final filter = _filters[index];
+          final isSelected = filter == _selectedFilter;
 
           return Padding(
-            padding: const EdgeInsets.only(right: 8.0),
+            padding: EdgeInsets.only(
+              left: index == 0 ? 16.0 : 8.0,
+              right: index == _filters.length - 1 ? 16.0 : 0.0,
+            ),
             child: FilterChip(
-              label: Text(_filters[index]),
+              label: Text(filter),
               selected: isSelected,
               onSelected: (selected) {
                 setState(() {
-                  _selectedFilter = _filters[index];
+                  _selectedFilter = filter;
                 });
               },
-              backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.grey[200],
-              selectedColor: Theme.of(context).primaryColor.withOpacity(0.2),
-              checkmarkColor: Theme.of(context).primaryColor,
+              backgroundColor: Colors.grey[200],
+              selectedColor: const Color(0xFF2196F3).withOpacity(0.2), // Updated to blue
+              checkmarkColor: const Color(0xFF2196F3), // Updated to blue
               labelStyle: TextStyle(
-                color: isSelected
-                    ? (isDarkMode ? Colors.white : Theme.of(context).primaryColor)
-                    : (isDarkMode ? Colors.white : Colors.black),
+                color: isSelected ? const Color(0xFF2196F3) : Colors.black, // Updated to blue
                 fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
               ),
             ),
@@ -154,59 +91,106 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
     );
   }
 
-  Widget _buildRecordsList() {
-    final filteredRecords = _getFilteredRecords();
+  Widget _buildHealthRecordsList() {
+    return Consumer<HealthRecordProvider>(
+      builder: (context, provider, child) {
+        if (provider.isLoading) {
+          return const Center(
+            child: CircularProgressIndicator(),
+          );
+        }
 
-    if (filteredRecords.isEmpty) {
-      return const Center(
-        child: Text(
-          'No records found',
-          style: const TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      );
-    }
-
-    return ListView.builder(
-      itemCount: filteredRecords.length,
-      padding: const EdgeInsets.all(16.0),
-      itemBuilder: (context, index) {
-        final record = filteredRecords[index];
-        return Card(
-          margin: const EdgeInsets.only(bottom: 16.0),
-          elevation: 2,
-          child: ListTile(
-            contentPadding: const EdgeInsets.all(16.0),
-            title: Text(
-              record.title,
-              style: const TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 16,
-              ),
-            ),
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+        if (provider.error.isNotEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                const SizedBox(height: 8),
-                Text('Date: ${_formatDate(record.date)}'),
-                Text('Provider: ${record.provider}'),
-                Text('Type: ${record.type}'),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.attach_file, size: 16, color: Colors.grey),
-                    Text(
-                      '${record.attachments.length} attachment(s)',
-                      style: const TextStyle(color: Colors.grey),
-                    ),
-                  ],
+                const Icon(
+                  Icons.error_outline,
+                  color: Colors.red,
+                  size: 60,
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  'Error: ${provider.error}',
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 16),
+                ElevatedButton(
+                  onPressed: _fetchHealthRecords,
+                  child: const Text('Retry'),
                 ),
               ],
             ),
-            trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (context) => HealthRecordDetailScreen(record: record),
+          );
+        }
+
+        final records = provider.healthRecords;
+
+        if (records.isEmpty) {
+          return const Center(
+            child: Text('No health records found'),
+          );
+        }
+
+        // Filter records
+        final filteredRecords = _selectedFilter == 'All'
+            ? records
+            : records.where((record) => record.type == _selectedFilter).toList();
+
+        if (filteredRecords.isEmpty) {
+          return Center(
+            child: Text('No ${_selectedFilter.toLowerCase()} records found'),
+          );
+        }
+
+        return RefreshIndicator(
+          onRefresh: _fetchHealthRecords,
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16.0),
+            itemCount: filteredRecords.length,
+            itemBuilder: (context, index) {
+              final record = filteredRecords[index];
+
+              return Card(
+                margin: const EdgeInsets.only(bottom: 16.0),
+                elevation: 2,
+                child: ListTile(
+                  contentPadding: const EdgeInsets.all(16.0),
+                  title: Text(
+                    record.title,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                    ),
+                  ),
+                  subtitle: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 8),
+                      Text('Date: ${_formatDate(record.date)}'),
+                      const SizedBox(height: 4),
+                      Text('Provider: ${record.provider}'),
+                      const SizedBox(height: 4),
+                      Text('Type: ${record.type}'),
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.attach_file, size: 16),
+                          const SizedBox(width: 4),
+                          Text('${record.attachments.length} attachment(s)'),
+                        ],
+                      ),
+                    ],
+                  ),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => HealthRecordDetailScreen(recordId: record.id),
+                      ),
+                    );
+                  },
                 ),
               );
             },
@@ -220,4 +204,3 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
     return '${date.day}/${date.month}/${date.year}';
   }
 }
-

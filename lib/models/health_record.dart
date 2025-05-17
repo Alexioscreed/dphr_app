@@ -17,29 +17,8 @@ class HealthRecord {
     required this.attachments,
   });
 
-  // Create a copy with modified fields
-  HealthRecord copyWith({
-    String? id,
-    String? title,
-    DateTime? date,
-    String? provider,
-    String? type,
-    String? description,
-    List<String>? attachments,
-  }) {
-    return HealthRecord(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      date: date ?? this.date,
-      provider: provider ?? this.provider,
-      type: type ?? this.type,
-      description: description ?? this.description,
-      attachments: attachments ?? this.attachments,
-    );
-  }
-
-  // Convert to JSON
-  Map<String, dynamic> toJson() {
+  // Convert to Map for database storage
+  Map<String, dynamic> toMap() {
     return {
       'id': id,
       'title': title,
@@ -51,17 +30,16 @@ class HealthRecord {
     };
   }
 
-  // Create from JSON
-  factory HealthRecord.fromJson(Map<String, dynamic> json) {
+  // Create from Map for database retrieval
+  factory HealthRecord.fromMap(Map<String, dynamic> map) {
     return HealthRecord(
-      id: json['id'],
-      title: json['title'],
-      date: DateTime.parse(json['date']),
-      provider: json['provider'],
-      type: json['type'],
-      description: json['description'],
-      attachments: List<String>.from(json['attachments']),
+      id: map['id'],
+      title: map['title'],
+      date: DateTime.parse(map['date']),
+      provider: map['provider'],
+      type: map['type'],
+      description: map['description'],
+      attachments: List<String>.from(map['attachments']),
     );
   }
 }
-

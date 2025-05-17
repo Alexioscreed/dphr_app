@@ -1,0 +1,65 @@
+class User {
+  final String id;
+  final String name;
+  final String email;
+  final String mrn;
+  final String? phone;
+  final String? address;
+  final String? dateOfBirth;
+  final String? gender;
+  final String? bloodType;
+  final List<String>? allergies;
+  final List<String>? medications;
+  final List<String>? conditions;
+
+  User({
+    required this.id,
+    required this.name,
+    required this.email,
+    required this.mrn,
+    this.phone,
+    this.address,
+    this.dateOfBirth,
+    this.gender,
+    this.bloodType,
+    this.allergies,
+    this.medications,
+    this.conditions,
+  });
+
+  // Convert to Map for database storage
+  Map<String, dynamic> toMap() {
+    return {
+      'id': id,
+      'name': name,
+      'email': email,
+      'mrn': mrn,
+      'phone': phone,
+      'address': address,
+      'dateOfBirth': dateOfBirth,
+      'gender': gender,
+      'bloodType': bloodType,
+      'allergies': allergies,
+      'medications': medications,
+      'conditions': conditions,
+    };
+  }
+
+  // Create from Map for database retrieval
+  factory User.fromMap(Map<String, dynamic> map) {
+    return User(
+      id: map['id'],
+      name: map['name'],
+      email: map['email'],
+      mrn: map['mrn'],
+      phone: map['phone'],
+      address: map['address'],
+      dateOfBirth: map['dateOfBirth'],
+      gender: map['gender'],
+      bloodType: map['bloodType'],
+      allergies: map['allergies'] != null ? List<String>.from(map['allergies']) : null,
+      medications: map['medications'] != null ? List<String>.from(map['medications']) : null,
+      conditions: map['conditions'] != null ? List<String>.from(map['conditions']) : null,
+    );
+  }
+}

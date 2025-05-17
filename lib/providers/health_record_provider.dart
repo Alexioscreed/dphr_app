@@ -2,44 +2,61 @@ import 'package:flutter/material.dart';
 import '../models/health_record.dart';
 
 class HealthRecordProvider with ChangeNotifier {
-  List<HealthRecord> _records = [];
+  List<HealthRecord> _healthRecords = [];
   bool _isLoading = false;
   String _error = '';
 
-  List<HealthRecord> get records => [..._records];
+  List<HealthRecord> get healthRecords => [..._healthRecords];
   bool get isLoading => _isLoading;
   String get error => _error;
 
-  Future<void> fetchRecords() async {
+  // Fetch health records
+  Future<void> fetchHealthRecords() async {
     _isLoading = true;
-    _error = '';
     notifyListeners();
 
     try {
-      // In a real app, this would be an API call to fetch records
+      // Simulate API call
       await Future.delayed(const Duration(seconds: 1));
 
-      // Sample data
-      _records = [
+      // Sample health records
+      _healthRecords = [
         HealthRecord(
           id: '1',
-          title: 'Annual Check-up',
-          date: DateTime(2023, 5, 15),
+          title: 'Annual Physical Examination',
+          date: DateTime.now().subtract(const Duration(days: 30)),
           provider: 'Dr. John Smith',
-          type: 'Medical',
-          description: 'Regular annual physical examination',
-          attachments: ['Physical Exam Report', 'Vitals'],
+          type: 'Examination',
+          description: 'Annual physical examination with blood work and vitals check.',
+          attachments: ['physical_exam_report.pdf', 'blood_work_results.pdf'],
         ),
         HealthRecord(
           id: '2',
-          title: 'Blood Test Results',
-          date: DateTime(2023, 4, 10),
-          provider: 'City Lab',
-          type: 'Lab Tests',
-          description: 'Complete blood count and metabolic panel',
-          attachments: ['CBC Results', 'Metabolic Panel'],
+          title: 'COVID-19 Vaccination',
+          date: DateTime.now().subtract(const Duration(days: 60)),
+          provider: 'City Health Department',
+          type: 'Vaccination',
+          description: 'COVID-19 vaccination - Pfizer BioNTech, 2nd dose.',
+          attachments: ['vaccination_certificate.pdf'],
         ),
-        // Add more sample records as needed
+        HealthRecord(
+          id: '3',
+          title: 'Dental Checkup',
+          date: DateTime.now().subtract(const Duration(days: 90)),
+          provider: 'Dr. Sarah Johnson',
+          type: 'Dental',
+          description: 'Regular dental checkup and cleaning.',
+          attachments: ['dental_xrays.jpg', 'dental_report.pdf'],
+        ),
+        HealthRecord(
+          id: '4',
+          title: 'Allergy Test Results',
+          date: DateTime.now().subtract(const Duration(days: 120)),
+          provider: 'Allergy Specialists Inc.',
+          type: 'Laboratory',
+          description: 'Comprehensive allergy panel testing for food and environmental allergies.',
+          attachments: ['allergy_test_results.pdf'],
+        ),
       ];
 
       _isLoading = false;
@@ -51,15 +68,25 @@ class HealthRecordProvider with ChangeNotifier {
     }
   }
 
-  Future<void> addRecord(HealthRecord record) async {
+  // Get health record by ID
+  HealthRecord? getHealthRecordById(String id) {
+    try {
+      return _healthRecords.firstWhere((record) => record.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Add health record
+  Future<void> addHealthRecord(HealthRecord record) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // In a real app, this would be an API call to add a record
+      // Simulate API call
       await Future.delayed(const Duration(seconds: 1));
 
-      _records.add(record);
+      _healthRecords.add(record);
 
       _isLoading = false;
       notifyListeners();
@@ -70,37 +97,16 @@ class HealthRecordProvider with ChangeNotifier {
     }
   }
 
-  Future<void> updateRecord(HealthRecord record) async {
+  // Delete health record
+  Future<void> deleteHealthRecord(String id) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // In a real app, this would be an API call to update a record
+      // Simulate API call
       await Future.delayed(const Duration(seconds: 1));
 
-      final index = _records.indexWhere((r) => r.id == record.id);
-      if (index >= 0) {
-        _records[index] = record;
-      }
-
-      _isLoading = false;
-      notifyListeners();
-    } catch (e) {
-      _error = e.toString();
-      _isLoading = false;
-      notifyListeners();
-    }
-  }
-
-  Future<void> deleteRecord(String id) async {
-    _isLoading = true;
-    notifyListeners();
-
-    try {
-      // In a real app, this would be an API call to delete a record
-      await Future.delayed(const Duration(seconds: 1));
-
-      _records.removeWhere((record) => record.id == id);
+      _healthRecords.removeWhere((record) => record.id == id);
 
       _isLoading = false;
       notifyListeners();
@@ -111,4 +117,3 @@ class HealthRecordProvider with ChangeNotifier {
     }
   }
 }
-

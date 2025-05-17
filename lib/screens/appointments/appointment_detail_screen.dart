@@ -3,7 +3,7 @@ import 'package:provider/provider.dart';
 import '../../providers/appointment_provider.dart';
 import '../../models/appointment.dart';
 
-class AppointmentDetailScreen extends StatelessWidget {
+class AppointmentDetailScreen extends StatefulWidget {
   final String appointmentId;
 
   const AppointmentDetailScreen({
@@ -12,14 +12,24 @@ class AppointmentDetailScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<AppointmentDetailScreen> createState() => _AppointmentDetailScreenState();
+}
+
+class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
+  bool _isLoading = false;
+
+  @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final appointmentProvider = Provider.of<AppointmentProvider>(context);
-    final appointment = appointmentProvider.getAppointmentById(appointmentId);
+    final appointment = appointmentProvider.getAppointmentById(widget.appointmentId);
 
     if (appointment == null) {
       return Scaffold(
         appBar: AppBar(
           title: const Text('Appointment Details'),
+          backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+          foregroundColor: isDarkMode ? Colors.white : Colors.black,
         ),
         body: const Center(
           child: Text('Appointment not found'),
@@ -30,50 +40,30 @@ class AppointmentDetailScreen extends StatelessWidget {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Appointment Details'),
-        actions: [
-          if (appointment.status == 'scheduled')
-            IconButton(
-              icon: const Icon(Icons.edit),
-              onPressed: () {
-                // Navigate to edit appointment screen
-              },
-            ),
-        ],
+        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildHeader(context, appointment),
+            _buildAppointmentCard(appointment),
             const SizedBox(height: 24),
-            _buildDetailsSection(appointment),
+            _buildDoctorCard(appointment),
             const SizedBox(height: 24),
-            _buildLocationSection(appointment),
+            _buildLocationCard(appointment),
             const SizedBox(height: 24),
-            if (appointment.notes.isNotEmpty) _buildNotesSection(appointment),
+            _buildNotesCard(appointment),
             const SizedBox(height: 24),
-            if (appointment.status == 'scheduled')
-              SizedBox(
-                width: double.infinity,
-                child: ElevatedButton(
-                  onPressed: () {
-                    _showCancelDialog(context, appointmentProvider, appointment);
-                  },
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
-                  child: const Text('Cancel Appointment'),
-                ),
-              ),
+            _buildActionButtons(appointment),
           ],
         ),
       ),
     );
   }
 
-  Widget _buildHeader(BuildContext context, Appointment appointment) {
+  Widget _buildAppointmentCard(Appointment appointment) {
     return Card(
       elevation: 2,
       child: Padding(
@@ -83,32 +73,86 @@ class AppointmentDetailScreen extends StatelessWidget {
           children: [
             Row(
               children: [
-                CircleAvatar(
-                  backgroundColor: _getStatusColor(appointment.status),
-                  radius: 24,
-                  child: Icon(
-                    _getStatusIcon(appointment.status),
-                    color: Colors.white,
-                    size: 24,
-                  ),
+                const Icon(
+                  Icons.event,
+                  color: Color(0xFF2196F3),
+                  size: 28,
                 ),
                 const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Appointment Details',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: _getStatusColor(appointment.status),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        appointment.status,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            Row(
+              children: [
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      const Text(
+                        'Date',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Text(
-                        appointment.doctorName,
+                        _formatDate(appointment.date),
                         style: const TextStyle(
-                          fontSize: 20,
+                          fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
+                    ],
+                  ),
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Time',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontSize: 14,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
                       Text(
-                        appointment.specialty,
+                        _formatTime(appointment.time),
                         style: const TextStyle(
                           fontSize: 16,
-                          color: Colors.grey,
+                          fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
@@ -116,18 +160,139 @@ class AppointmentDetailScreen extends StatelessWidget {
                 ),
               ],
             ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDoctorCard(Appointment appointment) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const CircleAvatar(
+                  radius: 24,
+                  backgroundColor: Color(0xFF2196F3),
+                  child: Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 24,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Dr. ${appointment.doctorName}',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      appointment.department,
+                      style: const TextStyle(
+                        color: Colors.grey,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
             const SizedBox(height: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-              decoration: BoxDecoration(
-                color: _getStatusColor(appointment.status).withOpacity(0.1),
-                borderRadius: BorderRadius.circular(16),
+            const Divider(),
+            const SizedBox(height: 16),
+            Row(
+              children: [
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      // Call doctor
+                    },
+                    icon: const Icon(Icons.phone),
+                    label: const Text('Call'),
+                  ),
+                ),
+                Expanded(
+                  child: TextButton.icon(
+                    onPressed: () {
+                      // Message doctor
+                    },
+                    icon: const Icon(Icons.message),
+                    label: const Text('Message'),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLocationCard(Appointment appointment) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.location_on,
+                  color: Color(0xFF2196F3),
+                  size: 28,
+                ),
+                const SizedBox(width: 16),
+                const Text(
+                  'Location',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text(
+              appointment.hospital,
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
               ),
-              child: Text(
-                _capitalizeFirstLetter(appointment.status),
-                style: TextStyle(
-                  color: _getStatusColor(appointment.status),
-                  fontWeight: FontWeight.bold,
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              '123 Medical Center Drive, City, State 12345',
+              style: TextStyle(
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 16),
+            SizedBox(
+              width: double.infinity,
+              child: OutlinedButton.icon(
+                onPressed: () {
+                  // Open maps
+                },
+                icon: const Icon(Icons.map),
+                label: const Text('View on Map'),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: const Color(0xFF2196F3),
+                  side: const BorderSide(color: Color(0xFF2196F3)),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
                 ),
               ),
             ),
@@ -137,106 +302,103 @@ class AppointmentDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailsSection(Appointment appointment) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Appointment Details',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildDetailRow(
-                  icon: Icons.calendar_today,
-                  title: 'Date',
-                  value: _formatDate(appointment.dateTime),
-                ),
-                const Divider(),
-                _buildDetailRow(
-                  icon: Icons.access_time,
-                  title: 'Time',
-                  value: _formatTime(appointment.dateTime),
-                ),
-                const Divider(),
-                _buildDetailRow(
-                  icon: Icons.description,
-                  title: 'Reason',
-                  value: appointment.reason,
-                ),
-              ],
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildLocationSection(Appointment appointment) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Location',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+  Widget _buildNotesCard(Appointment appointment) {
+    return Card(
+      elevation: 2,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
               children: [
                 const Icon(
-                  Icons.location_on,
-                  color: Colors.red,
-                  size: 24,
+                  Icons.note,
+                  color: Color(0xFF2196F3),
+                  size: 28,
                 ),
                 const SizedBox(width: 16),
-                Expanded(
-                  child: Text(
-                    appointment.location,
-                    style: const TextStyle(fontSize: 16),
+                const Text(
+                  'Notes',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
               ],
             ),
-          ),
+            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 16),
+            Text(
+              appointment.notes.isEmpty ? 'No notes available' : appointment.notes,
+              style: TextStyle(
+                color: appointment.notes.isEmpty ? Colors.grey : null,
+              ),
+            ),
+          ],
         ),
-      ],
+      ),
     );
   }
 
-  Widget _buildNotesSection(Appointment appointment) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Notes',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
+  Widget _buildActionButtons(Appointment appointment) {
+    final bool isPast = appointment.date.isBefore(DateTime.now());
+    final bool isCancelled = appointment.status == 'Cancelled';
+
+    if (isPast || isCancelled) {
+      return SizedBox(
+        width: double.infinity,
+        child: ElevatedButton.icon(
+          onPressed: () {
+            // Book new appointment
+            Navigator.pop(context);
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Book New Appointment'),
+          style: ElevatedButton.styleFrom(
+            backgroundColor: const Color(0xFF2196F3),
+            padding: const EdgeInsets.symmetric(vertical: 12),
           ),
         ),
-        const SizedBox(height: 8),
-        Card(
-          elevation: 2,
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Text(
-              appointment.notes,
-              style: const TextStyle(fontSize: 16),
+      );
+    }
+
+    return Column(
+      children: [
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: () {
+              // Reschedule appointment
+            },
+            icon: const Icon(Icons.edit_calendar),
+            label: const Text('Reschedule'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+        const SizedBox(height: 12),
+        SizedBox(
+          width: double.infinity,
+          child: OutlinedButton.icon(
+            onPressed: _isLoading ? null : () => _cancelAppointment(appointment.id),
+            icon: _isLoading
+                ? const SizedBox(
+              height: 16,
+              width: 16,
+              child: CircularProgressIndicator(
+                strokeWidth: 2,
+              ),
+            )
+                : const Icon(Icons.cancel),
+            label: Text(_isLoading ? 'Cancelling...' : 'Cancel Appointment'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red,
+              side: const BorderSide(color: Colors.red),
+              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
           ),
         ),
@@ -244,103 +406,40 @@ class AppointmentDetailScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildDetailRow({
-    required IconData icon,
-    required String title,
-    required String value,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.grey),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(
-                  color: Colors.grey,
-                  fontSize: 14,
-                ),
-              ),
-              Text(
-                value,
-                style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
+  Future<void> _cancelAppointment(String id) async {
+    setState(() {
+      _isLoading = true;
+    });
 
-  void _showCancelDialog(
-      BuildContext context,
-      AppointmentProvider provider,
-      Appointment appointment,
-      ) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        title: const Text('Cancel Appointment'),
-        content: const Text(
-          'Are you sure you want to cancel this appointment?',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.of(ctx).pop();
-            },
-            child: const Text('No'),
-          ),
-          TextButton(
-            onPressed: () async {
-              Navigator.of(ctx).pop();
-              await provider.cancelAppointment(appointment.id);
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Appointment cancelled successfully'),
-                  ),
-                );
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text('Yes'),
-          ),
-        ],
-      ),
-    );
-  }
+    try {
+      final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
+      final success = await appointmentProvider.cancelAppointment(id);
 
-  Color _getStatusColor(String status) {
-    switch (status) {
-      case 'scheduled':
-        return Colors.blue;
-      case 'completed':
-        return Colors.green;
-      case 'cancelled':
-        return Colors.red;
-      default:
-        return Colors.grey;
-    }
-  }
+      setState(() {
+        _isLoading = false;
+      });
 
-  IconData _getStatusIcon(String status) {
-    switch (status) {
-      case 'scheduled':
-        return Icons.calendar_today;
-      case 'completed':
-        return Icons.check;
-      case 'cancelled':
-        return Icons.cancel;
-      default:
-        return Icons.help;
+      if (!mounted) return;
+
+      if (success) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment cancelled successfully')),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Failed to cancel appointment: ${appointmentProvider.error}')),
+        );
+      }
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to cancel appointment: $e')),
+      );
     }
   }
 
@@ -348,15 +447,24 @@ class AppointmentDetailScreen extends StatelessWidget {
     return '${date.day}/${date.month}/${date.year}';
   }
 
-  String _formatTime(DateTime dateTime) {
-    final hour = dateTime.hour.toString().padLeft(2, '0');
-    final minute = dateTime.minute.toString().padLeft(2, '0');
+  String _formatTime(TimeOfDay time) {
+    final hour = time.hour.toString().padLeft(2, '0');
+    final minute = time.minute.toString().padLeft(2, '0');
     return '$hour:$minute';
   }
 
-  String _capitalizeFirstLetter(String text) {
-    if (text.isEmpty) return text;
-    return text[0].toUpperCase() + text.substring(1);
+  Color _getStatusColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'confirmed':
+        return const Color(0xFF2196F3);
+      case 'completed':
+        return Colors.green;
+      case 'cancelled':
+        return Colors.red;
+      case 'rescheduled':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
   }
 }
-

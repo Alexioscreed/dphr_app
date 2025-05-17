@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/api_provider.dart';
-import '../../utils/constants.dart';
 import 'shared_record_detail_screen.dart';
+import '../../models/shared_record.dart';
 
 class SharedRecordsScreen extends StatefulWidget {
   const SharedRecordsScreen({Key? key}) : super(key: key);
@@ -12,216 +12,225 @@ class SharedRecordsScreen extends StatefulWidget {
 }
 
 class _SharedRecordsScreenState extends State<SharedRecordsScreen> {
-  final _formKey = GlobalKey<FormState>();
-  final _idController = TextEditingController();
-  String _selectedIdType = 'MRN';
-  bool _isSearching = false;
+  bool _isLoading = false;
+  String _searchQuery = '';
+  final TextEditingController _searchController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchSharedRecords();
+  }
 
   @override
   void dispose() {
-    _idController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   Future<void> _fetchSharedRecords() async {
-    if (_formKey.currentState!.validate()) {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+      await apiProvider.fetchSharedRecords();
+
       setState(() {
-        _isSearching = true;
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
       });
 
-      await Provider.of<ApiProvider>(context, listen: false).fetchSharedRecords(
-        _idController.text,
-        _selectedIdType,
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch shared records: $e')),
       );
-
-      setState(() {
-        _isSearching = false;
-      });
     }
+  }
+
+  void _onSearch(String query) {
+    setState(() {
+      _searchQuery = query.toLowerCase();
+    });
+  }
+
+  List<SharedRecord> _getFilteredRecords(List<SharedRecord> records) {
+    if (_searchQuery.isEmpty) {
+      return records;
+    }
+
+    return records.where((record) {
+      return record.recipientName.toLowerCase().contains(_searchQuery) ||
+          record.recipientEmail.toLowerCase().contains(_searchQuery) ||
+          record.recordType.toLowerCase().contains(_searchQuery);
+    }).toList();
   }
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final apiProvider = Provider.of<ApiProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Shared Health Records'),
+        title: const Text('Shared Records'),
+        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Form(
-              key: _formKey,
-              child: Column(
-                children: [
-                  DropdownButtonFormField<String>(
-                    value: _selectedIdType,
-                    decoration: const InputDecoration(
-                      labelText: 'ID Type',
-                      border: OutlineInputBorder(),
-                    ),
-                    items: ApiConstants.idTypes.map((type) {
-                      return DropdownMenuItem<String>(
-                        value: type,
-                        child: Text(type),
-                      );
-                    }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedIdType = value!;
-                      });
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  TextFormField(
-                    controller: _idController,
-                    decoration: const InputDecoration(
-                      labelText: 'ID Number',
-                      border: OutlineInputBorder(),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Please enter an ID number';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton(
-                      onPressed: _isSearching ? null : _fetchSharedRecords,
-                      child: _isSearching
-                          ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                          : const Text('Search Records'),
-                    ),
-                  ),
-                ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.all(16.0),
+            child: TextField(
+              controller: _searchController,
+              decoration: InputDecoration(
+                hintText: 'Search by recipient, email, or record type',
+                prefixIcon: const Icon(Icons.search),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                suffixIcon: _searchQuery.isNotEmpty
+                    ? IconButton(
+                  icon: const Icon(Icons.clear),
+                  onPressed: () {
+                    _searchController.clear();
+                    _onSearch('');
+                  },
+                )
+                    : null,
               ),
+              onChanged: _onSearch,
             ),
-            const SizedBox(height: 24),
-            const Text(
-              'Shared Records',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+          ),
+          Expanded(
+            child: _buildRecordsList(apiProvider),
+          ),
+        ],
+      ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          // Navigate to share record screen
+        },
+        backgroundColor: const Color(0xFF2196F3), // Blue color
+        child: const Icon(Icons.share),
+      ),
+    );
+  }
+
+  Widget _buildRecordsList(ApiProvider apiProvider) {
+    if (_isLoading) {
+      return const Center(
+        child: CircularProgressIndicator(),
+      );
+    }
+
+    if (apiProvider.error.isNotEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Icon(
+              Icons.error_outline,
+              color: Colors.red,
+              size: 60,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'Error: ${apiProvider.error}',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: Colors.red,
               ),
             ),
             const SizedBox(height: 16),
-            Expanded(
-              child: Consumer<ApiProvider>(
-                builder: (context, apiProvider, child) {
-                  if (apiProvider.isLoading) {
-                    return const Center(child: CircularProgressIndicator());
-                  }
+            ElevatedButton(
+              onPressed: () {
+                apiProvider.resetError();
+                _fetchSharedRecords();
+              },
+              child: const Text('Retry'),
+            ),
+          ],
+        ),
+      );
+    }
 
-                  if (apiProvider.error.isNotEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Text(
-                            'Error: ${apiProvider.error}',
-                            style: const TextStyle(color: Colors.red),
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () {
-                              apiProvider.resetError();
-                            },
-                            child: const Text('Try Again'),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
+    final filteredRecords = _getFilteredRecords(apiProvider.sharedRecords);
 
-                  if (apiProvider.sharedRecords == null) {
-                    return const Center(
-                      child: Text('No records found. Search to view shared records.'),
-                    );
-                  }
+    if (filteredRecords.isEmpty) {
+      return const Center(
+        child: Text(
+          'No shared records found',
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+      );
+    }
 
-                  final results = apiProvider.sharedRecords!.results;
+    return RefreshIndicator(
+      onRefresh: _fetchSharedRecords,
+      child: ListView.builder(
+        itemCount: filteredRecords.length,
+        itemBuilder: (context, index) {
+          final record = filteredRecords[index];
+          return _buildRecordCard(record);
+        },
+      ),
+    );
+  }
 
-                  if (results == null || results.isEmpty) {
-                    return const Center(
-                      child: Text('No shared records found for this ID.'),
-                    );
-                  }
-
-                  return ListView.builder(
-                    itemCount: results.length,
-                    itemBuilder: (context, index) {
-                      final record = results[index];
-                      final visitDetails = record.visitDetails;
-                      final diagnosisDetails = record.diagnosisDetails;
-
-                      return Card(
-                        margin: const EdgeInsets.only(bottom: 16.0),
-                        child: Padding(
-                          padding: const EdgeInsets.all(16.0),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                'Visit Date: ${visitDetails.visitDate}',
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 16,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text('Visit Type: ${visitDetails.visitType}'),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Diagnosis: ${diagnosisDetails != null && diagnosisDetails.isNotEmpty ? diagnosisDetails[0].diagnosis : 'N/A'}',
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Facility: ${record.facilityDetails.name}',
-                                style: const TextStyle(
-                                  fontStyle: FontStyle.italic,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.end,
-                                children: [
-                                  ElevatedButton(
-                                    onPressed: () {
-                                      Navigator.of(context).push(
-                                        MaterialPageRoute(
-                                          builder: (context) => SharedRecordDetailScreen(record: record),
-                                        ),
-                                      );
-                                    },
-                                    child: const Text('View Details'),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      );
-                    },
-                  );
-                },
+  Widget _buildRecordCard(SharedRecord record) {
+    return Card(
+      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      elevation: 2,
+      child: ListTile(
+        contentPadding: const EdgeInsets.all(16),
+        title: Text(
+          record.recipientName,
+          style: const TextStyle(
+            fontWeight: FontWeight.bold,
+            fontSize: 16,
+          ),
+        ),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const SizedBox(height: 8),
+            Text('Email: ${record.recipientEmail}'),
+            const SizedBox(height: 4),
+            Text('Record Type: ${record.recordType}'),
+            const SizedBox(height: 4),
+            Text('Shared Date: ${_formatDate(record.sharedDate)}'),
+            const SizedBox(height: 4),
+            Text(
+              'Status: ${record.status}',
+              style: TextStyle(
+                color: record.status == 'Active' ? Colors.green : Colors.red,
+                fontWeight: FontWeight.bold,
               ),
             ),
           ],
         ),
+        trailing: const Icon(Icons.chevron_right),
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => SharedRecordDetailScreen(recordId: record.id),
+            ),
+          );
+        },
       ),
     );
   }
-}
 
+  String _formatDate(DateTime date) {
+    return '${date.day}/${date.month}/${date.year}';
+  }
+}

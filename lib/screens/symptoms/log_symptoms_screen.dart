@@ -154,6 +154,7 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _logSymptom,
               style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3), // Updated to blue
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               child: _isLoading
@@ -182,7 +183,7 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.green,
+            color: Color(0xFF2196F3),
           ),
         ),
         const SizedBox(height: 16),
@@ -195,7 +196,7 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.green),
+                    const Icon(Icons.check_circle, color: Color(0xFF2196F3)),
                     const SizedBox(width: 8),
                     Text(
                       'Symptom: ${_symptomsController.text}',
@@ -236,7 +237,7 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.info, color: Colors.blue),
+                    const Icon(Icons.info, color: Color(0xFF2196F3)),
                     const SizedBox(width: 8),
                     const Text(
                       'Health Insight',
@@ -259,6 +260,7 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
           child: ElevatedButton(
             onPressed: _resetForm,
             style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3), // Updated to blue
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             child: const Text('Log Another Symptom'),
@@ -280,28 +282,28 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
         insight = 'Your headache is severe. Consider consulting with a healthcare provider if it persists or is accompanied by other symptoms like fever, stiff neck, or vision changes.';
       } else {
         insight = 'For mild to moderate headaches, try rest, hydration, and over-the-counter pain relievers if appropriate. If headaches are recurring, consider tracking potential triggers.';
-        insightColor = Colors.blue;
+        insightColor = const Color(0xFF2196F3); // Updated to blue
       }
     } else if (symptom.contains('fever')) {
       if (severity >= 4) {
         insight = 'Your fever is high. Consider consulting with a healthcare provider, especially if it persists for more than 3 days or is accompanied by severe symptoms.';
       } else {
         insight = 'For mild fever, ensure adequate rest and hydration. Monitor your temperature regularly and consider over-the-counter fever reducers if appropriate.';
-        insightColor = Colors.blue;
+        insightColor = const Color(0xFF2196F3); // Updated to blue
       }
     } else if (symptom.contains('cough')) {
       if (severity >= 4) {
         insight = 'Your cough is severe. Consider consulting with a healthcare provider, especially if it\'s accompanied by shortness of breath, chest pain, or produces colored phlegm.';
       } else {
         insight = 'For mild to moderate cough, ensure adequate hydration and rest. Consider honey (if appropriate) or over-the-counter cough suppressants for comfort.';
-        insightColor = Colors.blue;
+        insightColor = const Color(0xFF2196F3); // Updated to blue
       }
     } else {
       if (severity >= 4) {
         insight = 'Your symptoms are severe. Consider consulting with a healthcare provider for proper evaluation and treatment.';
       } else {
         insight = 'Monitor your symptoms and ensure adequate rest and hydration. If symptoms persist or worsen, consider consulting with a healthcare provider.';
-        insightColor = Colors.blue;
+        insightColor = const Color(0xFF2196F3); // Updated to blue
       }
     }
 

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:fl_chart/fl_chart.dart';
+import 'package:provider/provider.dart';
+import '../../providers/vital_measurements_provider.dart';
 import '../../models/vital_measurement.dart';
+import 'package:fl_chart/fl_chart.dart';
 
 class HealthProgressScreen extends StatefulWidget {
   const HealthProgressScreen({Key? key}) : super(key: key);
@@ -12,15 +14,13 @@ class HealthProgressScreen extends StatefulWidget {
 class _HealthProgressScreenState extends State<HealthProgressScreen> {
   String _selectedMetric = 'Blood Pressure';
   String _selectedTimeRange = '1 Month';
-  bool _isLoading = true;
-  List<VitalMeasurement> _vitalData = [];
+  bool _isLoading = false;
 
   final List<String> _metrics = [
     'Blood Pressure',
     'Heart Rate',
     'Blood Glucose',
     'Weight',
-    'Temperature',
     'Oxygen Saturation',
   ];
 
@@ -35,428 +35,552 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
   @override
   void initState() {
     super.initState();
-    _loadData();
+    _fetchMeasurements();
   }
 
-  Future<void> _loadData() async {
+  Future<void> _fetchMeasurements() async {
     setState(() {
       _isLoading = true;
     });
 
-    // Simulate API call
-    await Future.delayed(const Duration(seconds: 1));
+    try {
+      final vitalMeasurementsProvider = Provider.of<VitalMeasurementsProvider>(context, listen: false);
+      await vitalMeasurementsProvider.fetchMeasurements();
 
-    // Generate sample data based on selected metric and time range
-    final now = DateTime.now();
-    final data = <VitalMeasurement>[];
+      setState(() {
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
 
-    if (_selectedMetric == 'Blood Pressure') {
-      // Generate blood pressure data
-      for (int i = 30; i >= 0; i--) {
-        final date = now.subtract(Duration(days: i));
-        data.add(
-          VitalMeasurement(
-            type: 'Blood Pressure',
-            value: '${120 + (i % 10)}/${80 + (i % 5)} mmHg',
-            date: date,
-            notes: '',
-          ),
-        );
-      }
-    } else if (_selectedMetric == 'Heart Rate') {
-      // Generate heart rate data
-      for (int i = 30; i >= 0; i--) {
-        final date = now.subtract(Duration(days: i));
-        data.add(
-          VitalMeasurement(
-            type: 'Heart Rate',
-            value: '${70 + (i % 15)} bpm',
-            date: date,
-            notes: '',
-          ),
-        );
-      }
-    } else if (_selectedMetric == 'Blood Glucose') {
-      // Generate blood glucose data
-      for (int i = 30; i >= 0; i--) {
-        final date = now.subtract(Duration(days: i));
-        data.add(
-          VitalMeasurement(
-            type: 'Blood Glucose',
-            value: '${90 + (i % 20)} mg/dL',
-            date: date,
-            notes: '',
-          ),
-        );
-      }
-    } else if (_selectedMetric == 'Weight') {
-      // Generate weight data
-      for (int i = 30; i >= 0; i--) {
-        final date = now.subtract(Duration(days: i));
-        data.add(
-          VitalMeasurement(
-            type: 'Weight',
-            value: '${70 + (i % 5)} kg',
-            date: date,
-            notes: '',
-          ),
-        );
-      }
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to fetch measurements: $e')),
+      );
     }
-
-    setState(() {
-      _vitalData = data;
-      _isLoading = false;
-    });
   }
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('Health Progress'),
-        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
-        foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
-      body: Column(
-        children: [
-          _buildFilters(),
-          Expanded(
-            child: _isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : _buildProgressChart(),
-          ),
-        ],
+      body: _isLoading
+          ? const Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Health Progress',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            _buildSelectors(),
+            const SizedBox(height: 16),
+            _buildChart(),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildFilters() {
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            'Health Progress',
-            style: TextStyle(
-              fontSize: 20,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 16),
-          Row(
+  Widget _buildSelectors() {
+    return Row(
+      children: [
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedMetric,
-                  decoration: const InputDecoration(
-                    labelText: 'Metric',
-                    border: OutlineInputBorder(),
-                  ),
-                  items: _metrics.map((metric) {
-                    return DropdownMenuItem<String>(
-                      value: metric,
-                      child: Text(metric),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedMetric = value!;
-                      _loadData();
-                    });
-                  },
+              const Text(
+                'Metric',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
                 ),
               ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedTimeRange,
-                  decoration: const InputDecoration(
-                    labelText: 'Time Range',
-                    border: OutlineInputBorder(),
+              const SizedBox(height: 4),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedMetric,
+                    isExpanded: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    items: _metrics.map((metric) {
+                      return DropdownMenuItem<String>(
+                        value: metric,
+                        child: Text(metric),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedMetric = value!;
+                      });
+                    },
                   ),
-                  items: _timeRanges.map((range) {
-                    return DropdownMenuItem<String>(
-                      value: range,
-                      child: Text(range),
-                    );
-                  }).toList(),
-                  onChanged: (value) {
-                    setState(() {
-                      _selectedTimeRange = value!;
-                      _loadData();
-                    });
-                  },
                 ),
               ),
             ],
           ),
-        ],
-      ),
+        ),
+        const SizedBox(width: 16),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'Time Range',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                decoration: BoxDecoration(
+                  border: Border.all(color: Colors.grey.shade300),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: DropdownButtonHideUnderline(
+                  child: DropdownButton<String>(
+                    value: _selectedTimeRange,
+                    isExpanded: true,
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    items: _timeRanges.map((range) {
+                      return DropdownMenuItem<String>(
+                        value: range,
+                        child: Text(range),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      setState(() {
+                        _selectedTimeRange = value!;
+                      });
+                    },
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
     );
   }
 
-  Widget _buildProgressChart() {
-    if (_vitalData.isEmpty) {
-      return const Center(
-        child: Text(
-          'No data available',
-          style: TextStyle(fontSize: 16, color: Colors.grey),
-        ),
-      );
+  Widget _buildChart() {
+    final vitalMeasurementsProvider = Provider.of<VitalMeasurementsProvider>(context);
+    final measurements = vitalMeasurementsProvider.getMeasurementsByType(_selectedMetric);
+
+    if (measurements.isEmpty) {
+      return _buildEmptyState();
     }
+
+    // Sort measurements by date
+    measurements.sort((a, b) => a.date.compareTo(b.date));
 
     if (_selectedMetric == 'Blood Pressure') {
-      return _buildBloodPressureChart();
+      return _buildBloodPressureChart(measurements);
     } else {
-      return _buildLineChart();
+      return _buildSingleMetricChart(measurements);
     }
   }
 
-  Widget _buildLineChart() {
-    final List<FlSpot> spots = [];
+  Widget _buildEmptyState() {
+    return Container(
+      height: 400,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              _getMetricIcon(_selectedMetric),
+              size: 48,
+              color: Colors.grey,
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No $_selectedMetric data available',
+              style: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            const Text(
+              'Log measurements to see your progress',
+              style: TextStyle(
+                color: Colors.grey,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton(
+              onPressed: () {
+                // Navigate to log vitals screen
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3),
+              ),
+              child: const Text('Log Measurement'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 
-    for (int i = 0; i < _vitalData.length; i++) {
-      final vital = _vitalData[i];
-      double value = 0;
+  Widget _buildBloodPressureChart(List<VitalMeasurement> measurements) {
+    // Generate sample data for blood pressure
+    // In a real app, you would parse the actual values from measurements
+    final now = DateTime.now();
+    final dates = List.generate(30, (index) =>
+        now.subtract(Duration(days: 29 - index))
+    );
 
-      if (_selectedMetric == 'Heart Rate') {
-        value = double.parse(vital.value.split(' ')[0]);
-      } else if (_selectedMetric == 'Blood Glucose') {
-        value = double.parse(vital.value.split(' ')[0]);
-      } else if (_selectedMetric == 'Weight') {
-        value = double.parse(vital.value.split(' ')[0]);
+    // Sample systolic data (red line)
+    final systolicSpots = List.generate(30, (index) {
+      final baseValue = 120.0;
+      final variation = (index % 7 == 0) ? 10.0 : 0.0;
+      final decline = (index % 7) * 1.5;
+      return FlSpot(index.toDouble(), baseValue + variation - decline);
+    });
+
+    // Sample diastolic data (blue line)
+    final diastolicSpots = List.generate(30, (index) {
+      final baseValue = 80.0;
+      final variation = (index % 7 == 0) ? 5.0 : 0.0;
+      final decline = (index % 7) * 0.7;
+      return FlSpot(index.toDouble(), baseValue + variation - decline);
+    });
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          height: 400,
+          decoration: BoxDecoration(
+            color: Colors.grey.shade100,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          padding: const EdgeInsets.all(16),
+          child: LineChart(
+            LineChartData(
+              gridData: FlGridData(
+                show: true,
+                drawVerticalLine: true,
+                horizontalInterval: 10,
+                verticalInterval: 5,
+                getDrawingHorizontalLine: (value) {
+                  return FlLine(
+                    color: Colors.grey.shade300,
+                    strokeWidth: 1,
+                    dashArray: [5, 5],
+                  );
+                },
+                getDrawingVerticalLine: (value) {
+                  return FlLine(
+                    color: Colors.grey.shade300,
+                    strokeWidth: 1,
+                    dashArray: [5, 5],
+                  );
+                },
+              ),
+              titlesData: FlTitlesData(
+                show: true,
+                rightTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                topTitles: AxisTitles(
+                  sideTitles: SideTitles(showTitles: false),
+                ),
+                bottomTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    reservedSize: 30,
+                    interval: 5,
+                    getTitlesWidget: (value, meta) {
+                      if (value.toInt() % 5 != 0) return const Text('');
+                      final date = dates[value.toInt() >= dates.length ? dates.length - 1 : value.toInt()];
+                      return Text(
+                        '${date.day}/${date.month}',
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                leftTitles: AxisTitles(
+                  sideTitles: SideTitles(
+                    showTitles: true,
+                    interval: 10,
+                    getTitlesWidget: (value, meta) {
+                      return Text(
+                        value.toInt().toString(),
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 10,
+                        ),
+                      );
+                    },
+                    reservedSize: 30,
+                  ),
+                ),
+              ),
+              borderData: FlBorderData(
+                show: true,
+                border: Border.all(color: Colors.grey.shade300),
+              ),
+              minX: 0,
+              maxX: 29,
+              minY: 60,
+              maxY: 180,
+              lineBarsData: [
+                // Systolic line (red)
+                LineChartBarData(
+                  spots: systolicSpots,
+                  isCurved: true,
+                  color: Colors.red,
+                  barWidth: 2,
+                  isStrokeCapRound: true,
+                  dotData: FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: Colors.red.withOpacity(0.1),
+                  ),
+                ),
+                // Diastolic line (blue)
+                LineChartBarData(
+                  spots: diastolicSpots,
+                  isCurved: true,
+                  color: Colors.blue,
+                  barWidth: 2,
+                  isStrokeCapRound: true,
+                  dotData: FlDotData(show: false),
+                  belowBarData: BarAreaData(
+                    show: true,
+                    color: Colors.blue.withOpacity(0.1),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            _buildLegendItem('Systolic', Colors.red),
+            const SizedBox(width: 24),
+            _buildLegendItem('Diastolic', Colors.blue),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSingleMetricChart(List<VitalMeasurement> measurements) {
+    // Generate sample data
+    final now = DateTime.now();
+    final dates = List.generate(30, (index) =>
+        now.subtract(Duration(days: 29 - index))
+    );
+
+    // Sample data
+    final spots = List.generate(30, (index) {
+      double baseValue;
+      switch (_selectedMetric) {
+        case 'Heart Rate':
+          baseValue = 72.0;
+          break;
+        case 'Blood Glucose':
+          baseValue = 95.0;
+          break;
+        case 'Weight':
+          baseValue = 75.0;
+          break;
+        case 'Oxygen Saturation':
+          baseValue = 98.0;
+          break;
+        default:
+          baseValue = 100.0;
       }
 
-      spots.add(FlSpot(i.toDouble(), value));
+      final variation = (index % 5 == 0) ? (baseValue * 0.05) : 0.0;
+      final randomFactor = (index % 3 - 1) * (baseValue * 0.01);
+
+      return FlSpot(index.toDouble(), baseValue + variation + randomFactor);
+    });
+
+    Color lineColor;
+    switch (_selectedMetric) {
+      case 'Heart Rate':
+        lineColor = Colors.red;
+        break;
+      case 'Blood Glucose':
+        lineColor = Colors.purple;
+        break;
+      case 'Weight':
+        lineColor = Colors.green;
+        break;
+      case 'Oxygen Saturation':
+        lineColor = Colors.blue;
+        break;
+      default:
+        lineColor = const Color(0xFF2196F3);
     }
 
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Expanded(
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: true,
-                  horizontalInterval: 20,
-                  verticalInterval: 5,
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() % 5 == 0 && value.toInt() < _vitalData.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              _formatDate(_vitalData[value.toInt()].date),
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox();
-                      },
+    double minY, maxY;
+    switch (_selectedMetric) {
+      case 'Heart Rate':
+        minY = 50;
+        maxY = 100;
+        break;
+      case 'Blood Glucose':
+        minY = 70;
+        maxY = 150;
+        break;
+      case 'Weight':
+        minY = 60;
+        maxY = 90;
+        break;
+      case 'Oxygen Saturation':
+        minY = 90;
+        maxY = 100;
+        break;
+      default:
+        minY = 50;
+        maxY = 150;
+    }
+
+    return Container(
+      height: 400,
+      decoration: BoxDecoration(
+        color: Colors.grey.shade100,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      padding: const EdgeInsets.all(16),
+      child: LineChart(
+        LineChartData(
+          gridData: FlGridData(
+            show: true,
+            drawVerticalLine: true,
+            horizontalInterval: 10,
+            verticalInterval: 5,
+            getDrawingHorizontalLine: (value) {
+              return FlLine(
+                color: Colors.grey.shade300,
+                strokeWidth: 1,
+                dashArray: [5, 5],
+              );
+            },
+            getDrawingVerticalLine: (value) {
+              return FlLine(
+                color: Colors.grey.shade300,
+                strokeWidth: 1,
+                dashArray: [5, 5],
+              );
+            },
+          ),
+          titlesData: FlTitlesData(
+            show: true,
+            rightTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            topTitles: AxisTitles(
+              sideTitles: SideTitles(showTitles: false),
+            ),
+            bottomTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                reservedSize: 30,
+                interval: 5,
+                getTitlesWidget: (value, meta) {
+                  if (value.toInt() % 5 != 0) return const Text('');
+                  final date = dates[value.toInt() >= dates.length ? dates.length - 1 : value.toInt()];
+                  return Text(
+                    '${date.day}/${date.month}',
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 10,
                     ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          value.toInt().toString(),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        );
-                      },
-                      reservedSize: 40,
+                  );
+                },
+              ),
+            ),
+            leftTitles: AxisTitles(
+              sideTitles: SideTitles(
+                showTitles: true,
+                interval: 10,
+                getTitlesWidget: (value, meta) {
+                  return Text(
+                    value.toInt().toString(),
+                    style: const TextStyle(
+                      color: Colors.grey,
+                      fontSize: 10,
                     ),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                minX: 0,
-                maxX: (_vitalData.length - 1).toDouble(),
-                minY: _getMinY(),
-                maxY: _getMaxY(),
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: spots,
-                    isCurved: true,
-                    color: Theme.of(context).primaryColor,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Theme.of(context).primaryColor.withOpacity(0.2),
-                    ),
-                  ),
-                ],
+                  );
+                },
+                reservedSize: 30,
               ),
             ),
           ),
-          const SizedBox(height: 16),
-          _buildLegend(),
-        ],
+          borderData: FlBorderData(
+            show: true,
+            border: Border.all(color: Colors.grey.shade300),
+          ),
+          minX: 0,
+          maxX: 29,
+          minY: minY,
+          maxY: maxY,
+          lineBarsData: [
+            LineChartBarData(
+              spots: spots,
+              isCurved: true,
+              color: lineColor,
+              barWidth: 2,
+              isStrokeCapRound: true,
+              dotData: FlDotData(show: false),
+              belowBarData: BarAreaData(
+                show: true,
+                color: lineColor.withOpacity(0.1),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBloodPressureChart() {
-    final List<FlSpot> systolicSpots = [];
-    final List<FlSpot> diastolicSpots = [];
-
-    for (int i = 0; i < _vitalData.length; i++) {
-      final vital = _vitalData[i];
-      final parts = vital.value.split('/');
-      final systolic = double.parse(parts[0]);
-      final diastolic = double.parse(parts[1].split(' ')[0]);
-
-      systolicSpots.add(FlSpot(i.toDouble(), systolic));
-      diastolicSpots.add(FlSpot(i.toDouble(), diastolic));
-    }
-
-    return Padding(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        children: [
-          Expanded(
-            child: LineChart(
-              LineChartData(
-                gridData: FlGridData(
-                  show: true,
-                  drawVerticalLine: true,
-                  horizontalInterval: 20,
-                  verticalInterval: 5,
-                ),
-                titlesData: FlTitlesData(
-                  show: true,
-                  bottomTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      reservedSize: 30,
-                      getTitlesWidget: (value, meta) {
-                        if (value.toInt() % 5 == 0 && value.toInt() < _vitalData.length) {
-                          return Padding(
-                            padding: const EdgeInsets.only(top: 8.0),
-                            child: Text(
-                              _formatDate(_vitalData[value.toInt()].date),
-                              style: const TextStyle(
-                                color: Colors.grey,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 10,
-                              ),
-                            ),
-                          );
-                        }
-                        return const SizedBox();
-                      },
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      getTitlesWidget: (value, meta) {
-                        return Text(
-                          value.toInt().toString(),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 10,
-                          ),
-                        );
-                      },
-                      reservedSize: 40,
-                    ),
-                  ),
-                  topTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                  rightTitles: AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
-                  ),
-                ),
-                borderData: FlBorderData(
-                  show: true,
-                  border: Border.all(color: Colors.grey.shade300),
-                ),
-                minX: 0,
-                maxX: (_vitalData.length - 1).toDouble(),
-                minY: 60,
-                maxY: 180,
-                lineBarsData: [
-                  LineChartBarData(
-                    spots: systolicSpots,
-                    isCurved: true,
-                    color: Colors.red,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Colors.red.withOpacity(0.2),
-                    ),
-                  ),
-                  LineChartBarData(
-                    spots: diastolicSpots,
-                    isCurved: true,
-                    color: Colors.blue,
-                    barWidth: 3,
-                    isStrokeCapRound: true,
-                    dotData: FlDotData(show: false),
-                    belowBarData: BarAreaData(
-                      show: true,
-                      color: Colors.blue.withOpacity(0.2),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          const SizedBox(height: 16),
-          _buildBloodPressureLegend(),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildLegend() {
+  Widget _buildLegendItem(String label, Color color) {
     return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
       children: [
         Container(
           width: 16,
-          height: 16,
-          color: Theme.of(context).primaryColor,
+          height: 4,
+          color: color,
         ),
         const SizedBox(width: 8),
         Text(
-          _selectedMetric,
+          label,
           style: const TextStyle(
+            fontSize: 12,
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -464,63 +588,20 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
     );
   }
 
-  Widget _buildBloodPressureLegend() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        Container(
-          width: 16,
-          height: 16,
-          color: Colors.red,
-        ),
-        const SizedBox(width: 8),
-        const Text(
-          'Systolic',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(width: 24),
-        Container(
-          width: 16,
-          height: 16,
-          color: Colors.blue,
-        ),
-        const SizedBox(width: 8),
-        const Text(
-          'Diastolic',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  double _getMinY() {
-    if (_selectedMetric == 'Heart Rate') {
-      return 50;
-    } else if (_selectedMetric == 'Blood Glucose') {
-      return 70;
-    } else if (_selectedMetric == 'Weight') {
-      return 60;
+  IconData _getMetricIcon(String metricType) {
+    switch (metricType) {
+      case 'Blood Pressure':
+        return Icons.favorite;
+      case 'Heart Rate':
+        return Icons.monitor_heart;
+      case 'Blood Glucose':
+        return Icons.bloodtype;
+      case 'Weight':
+        return Icons.monitor_weight;
+      case 'Oxygen Saturation':
+        return Icons.air;
+      default:
+        return Icons.medical_services;
     }
-    return 0;
-  }
-
-  double _getMaxY() {
-    if (_selectedMetric == 'Heart Rate') {
-      return 120;
-    } else if (_selectedMetric == 'Blood Glucose') {
-      return 200;
-    } else if (_selectedMetric == 'Weight') {
-      return 100;
-    }
-    return 100;
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}';
   }
 }
-

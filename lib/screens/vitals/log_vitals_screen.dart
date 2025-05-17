@@ -212,6 +212,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
             child: ElevatedButton(
               onPressed: _isLoading ? null : _logVital,
               style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3), // Updated to blue
                 padding: const EdgeInsets.symmetric(vertical: 12),
               ),
               child: _isLoading
@@ -242,7 +243,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
-            color: Colors.green,
+            color: Color(0xFF2196F3),
           ),
         ),
         const SizedBox(height: 16),
@@ -255,7 +256,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.check_circle, color: Colors.green),
+                    const Icon(Icons.check_circle, color: Color(0xFF2196F3)),
                     const SizedBox(width: 8),
                     Text(
                       'Type: ${_savedVital!.type}',
@@ -296,7 +297,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.info, color: Colors.blue),
+                    const Icon(Icons.info, color: Color(0xFF2196F3)),
                     const SizedBox(width: 8),
                     const Text(
                       'Health Insight',
@@ -319,6 +320,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
           child: ElevatedButton(
             onPressed: _resetForm,
             style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF2196F3), // Updated to blue
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             child: const Text('Log Another Vital'),
@@ -435,7 +437,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
         Text(
           insight,
           style: TextStyle(
-            color: isNormal ? Colors.green : Colors.orange,
+            color: isNormal ? const Color(0xFF2196F3) : Colors.orange,
           ),
         ),
         const SizedBox(height: 16),

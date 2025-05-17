@@ -35,9 +35,9 @@ class _LogSectionScreenState extends State<LogSectionScreen> with SingleTickerPr
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
         bottom: TabBar(
           controller: _tabController,
-          labelColor: Theme.of(context).primaryColor,
+          labelColor: const Color(0xFF2196F3), // Updated to blue
           unselectedLabelColor: Colors.grey,
-          indicatorColor: Theme.of(context).primaryColor,
+          indicatorColor: const Color(0xFF2196F3), // Updated to blue
           tabs: const [
             Tab(text: 'Symptoms'),
             Tab(text: 'Vitals'),

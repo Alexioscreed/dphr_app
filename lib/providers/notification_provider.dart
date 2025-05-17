@@ -1,92 +1,151 @@
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
+class Notification {
+  final String id;
+  final String title;
+  final String message;
+  final DateTime date;
+  final bool isRead;
+  final String type;
+
+  Notification({
+    required this.id,
+    required this.title,
+    required this.message,
+    required this.date,
+    this.isRead = false,
+    required this.type,
+  });
+}
 
 class NotificationProvider with ChangeNotifier {
-  List<Map<String, dynamic>> _notifications = [];
-  int _unreadCount = 0;
+  List<Notification> _notifications = [];
+  bool _isInitialized = false;
+  bool _isLoading = false;
+  String _error = '';
+  bool _notificationsEnabled = true;
+  final String _notificationsEnabledKey = 'notifications_enabled';
 
-  List<Map<String, dynamic>> get notifications => [..._notifications];
-  int get unreadCount => _unreadCount;
+  List<Notification> get notifications => [..._notifications];
+  bool get isInitialized => _isInitialized;
+  bool get isLoading => _isLoading;
+  String get error => _error;
+  bool get notificationsEnabled => _notificationsEnabled;
+  int get unreadCount => _notifications.where((n) => !n.isRead).length;
 
-  NotificationProvider() {
-    // Initialize with some sample notifications
-    _notifications = [
-      {
-        'id': '1',
-        'title': 'Medication Reminder',
-        'message': 'Time to take your medication',
-        'timestamp': DateTime.now().subtract(const Duration(hours: 2)),
-        'isRead': false,
-        'type': 'medication',
-      },
-      {
-        'id': '2',
-        'title': 'Appointment Reminder',
-        'message': 'You have an appointment with Dr. Smith tomorrow at 10:00 AM',
-        'timestamp': DateTime.now().subtract(const Duration(days: 1)),
-        'isRead': false,
-        'type': 'appointment',
-      },
-      {
-        'id': '3',
-        'title': 'Health Alert',
-        'message': 'Your blood pressure reading is higher than normal',
-        'timestamp': DateTime.now().subtract(const Duration(days: 2)),
-        'isRead': true,
-        'type': 'alert',
-      },
-    ];
+  // Initialize notification provider
+  Future<void> initialize() async {
+    _isLoading = true;
+    notifyListeners();
 
-    _calculateUnreadCount();
-  }
+    try {
+      // Load notification settings
+      final prefs = await SharedPreferences.getInstance();
+      _notificationsEnabled = prefs.getBool(_notificationsEnabledKey) ?? true;
 
-  void _calculateUnreadCount() {
-    _unreadCount = _notifications.where((notification) => !notification['isRead']).length;
-  }
+      // Load notifications (in a real app, this would be from a database or API)
+      await fetchNotifications();
 
-  void markAsRead(String id) {
-    final index = _notifications.indexWhere((notification) => notification['id'] == id);
-    if (index >= 0) {
-      _notifications[index]['isRead'] = true;
-      _calculateUnreadCount();
+      _isInitialized = true;
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
       notifyListeners();
     }
   }
 
-  void markAllAsRead() {
-    for (var notification in _notifications) {
-      notification['isRead'] = true;
-    }
-    _unreadCount = 0;
+  // Fetch notifications
+  Future<void> fetchNotifications() async {
+    _isLoading = true;
     notifyListeners();
+
+    try {
+      // Simulate API call
+      await Future.delayed(const Duration(seconds: 1));
+
+      // Sample notifications
+      _notifications = [
+        Notification(
+          id: '1',
+          title: 'Appointment Reminder',
+          message: 'You have an appointment with Dr. Smith tomorrow at 10:00 AM.',
+          date: DateTime.now().subtract(const Duration(hours: 2)),
+          type: 'appointment',
+        ),
+        Notification(
+          id: '2',
+          title: 'Medication Reminder',
+          message: 'Time to take your medication.',
+          date: DateTime.now().subtract(const Duration(hours: 5)),
+          type: 'medication',
+        ),
+        Notification(
+          id: '3',
+          title: 'Health Record Updated',
+          message: 'Your health record has been updated with new lab results.',
+          date: DateTime.now().subtract(const Duration(days: 1)),
+          isRead: true,
+          type: 'record',
+        ),
+      ];
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
-  void addNotification(Map<String, dynamic> notification) {
-    _notifications.insert(0, notification);
-    if (!notification['isRead']) {
-      _unreadCount++;
+  // Mark notification as read
+  Future<void> markAsRead(String id) async {
+    final index = _notifications.indexWhere((n) => n.id == id);
+    if (index != -1) {
+      final notification = _notifications[index];
+      final updatedNotification = Notification(
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        date: notification.date,
+        isRead: true,
+        type: notification.type,
+      );
+
+      _notifications[index] = updatedNotification;
+      notifyListeners();
+
+      // In a real app, you would update this in a database or API
     }
-    notifyListeners();
   }
 
-  void removeNotification(String id) {
-    final notification = _notifications.firstWhere(
-          (notification) => notification['id'] == id,
-      orElse: () => {'isRead': true},
-    );
-
-    _notifications.removeWhere((notification) => notification['id'] == id);
-
-    if (!notification['isRead']) {
-      _calculateUnreadCount();
-    }
+  // Mark all notifications as read
+  Future<void> markAllAsRead() async {
+    _notifications = _notifications.map((notification) => Notification(
+      id: notification.id,
+      title: notification.title,
+      message: notification.message,
+      date: notification.date,
+      isRead: true,
+      type: notification.type,
+    )).toList();
 
     notifyListeners();
+
+    // In a real app, you would update this in a database or API
   }
 
-  void clearAll() {
-    _notifications = [];
-    _unreadCount = 0;
+  // Toggle notifications enabled
+  Future<void> toggleNotifications(bool enabled) async {
+    _notificationsEnabled = enabled;
+
+    // Save setting
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_notificationsEnabledKey, enabled);
+
     notifyListeners();
   }
 }
-

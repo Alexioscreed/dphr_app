@@ -3,7 +3,6 @@ import '../health_records/health_records_screen.dart';
 import '../progress/health_progress_screen.dart';
 import '../settings/settings_screen.dart';
 import '../shared_records/shared_records_screen.dart';
-import '../client/client_registration_screen.dart';
 import '../../widgets/notification_badge.dart';
 import '../appointments/appointments_screen.dart';
 import '../appointments/book_appointment_screen.dart';
@@ -30,10 +29,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('DPHR Dashboard'),
-        // Keep the default primary color for the dashboard
+        title: const Text(
+          'DPHR Dashboard',
+          style: TextStyle(
+            color: Color(0xFF2196F3), // Updated to blue
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
+        foregroundColor: isDarkMode ? Colors.white : Colors.black,
         actions: [
           NotificationBadge(
             count: 3,
@@ -51,15 +59,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             tooltip: 'Shared Records',
           ),
           IconButton(
-            icon: const Icon(Icons.person_add),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ClientRegistrationScreen()),
-              );
-            },
-            tooltip: 'Register Client',
-          ),
-          IconButton(
             icon: const Icon(Icons.settings),
             onPressed: () {
               Navigator.of(context).push(
@@ -73,14 +72,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: Theme(
         data: Theme.of(context).copyWith(
           bottomNavigationBarTheme: BottomNavigationBarThemeData(
-            backgroundColor: Theme.of(context).brightness == Brightness.dark
+            backgroundColor: isDarkMode
                 ? const Color(0xFF1E1E1E)
                 : Colors.white,
-            selectedItemColor: const Color(0xFF00A884), // Always use this bright teal color
+            selectedItemColor: const Color(0xFF2196F3), // Fresh blue color that works well in both modes
             unselectedItemColor: Colors.grey,
             showUnselectedLabels: true,
             selectedLabelStyle: const TextStyle(
-              color: Color(0xFF00A884),
+              color: Color(0xFF2196F3),
               fontWeight: FontWeight.bold,
             ),
             unselectedLabelStyle: const TextStyle(
@@ -156,7 +155,7 @@ class DashboardHomeScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: Color(0xFF00796B),
+              backgroundColor: Color(0xFF1976D2),
               child: Icon(
                 Icons.person,
                 size: 40,
@@ -450,7 +449,7 @@ class DashboardHomeScreen extends StatelessWidget {
           children: [
             CircleAvatar(
               radius: 25,
-              backgroundColor: const Color(0xFF00796B),
+              backgroundColor: const Color(0xFF1976D2),
               child: Icon(
                 icon,
                 color: Colors.white,
