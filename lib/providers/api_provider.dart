@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../models/shared_record.dart';
 
 class ApiProvider with ChangeNotifier {
   late ApiService _apiService;
+  final AuthService _authService = AuthService();
   bool _isInitialized = false;
   bool _isLoading = false;
   String _error = '';
@@ -21,14 +23,11 @@ class ApiProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // Initialize API service with configuration
-      // In a real app, these would come from secure storage or environment variables
-      _apiService = ApiService(
-        baseUrl: 'https://api.example.com/v1',
-        username: 'dphr_app',
-        password: 'secure_password',
-        hfrCode: 'HFR123',
-      );
+      // Initialize auth service first
+      await _authService.initialize();
+
+      // Initialize API service with auth service
+      _apiService = ApiService(_authService);
 
       _isInitialized = true;
       _isLoading = false;
@@ -57,7 +56,7 @@ class ApiProvider with ChangeNotifier {
       await Future.delayed(const Duration(seconds: 2)); // Simulate API call
 
       // Uncomment in a real app:
-      // await _apiService.registerClient(clientData);
+      // await _apiService.post('clients/register', clientData);
 
       _isLoading = false;
       notifyListeners();

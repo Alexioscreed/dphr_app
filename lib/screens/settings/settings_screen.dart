@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/notification_provider.dart';
 import '../auth/login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -31,6 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   @override
   Widget build(BuildContext context) {
     final themeProvider = Provider.of<ThemeProvider>(context);
+    final authProvider = Provider.of<AuthProvider>(context);
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
@@ -66,12 +66,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
           _buildAboutSettings(),
           const SizedBox(height: 24),
 
-          _buildLogoutButton(),
+          _buildLogoutButton(authProvider),
         ],
       ),
     );
   }
 
+  // Rest of the methods remain the same
   Widget _buildSectionHeader(String title) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
@@ -80,7 +81,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         style: const TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF2196F3), // Updated to blue
+          color: Color(0xFF2196F3),
         ),
       ),
     );
@@ -333,9 +334,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  Widget _buildLogoutButton() {
+  Widget _buildLogoutButton(AuthProvider authProvider) {
     return ElevatedButton.icon(
-      onPressed: () {
+      onPressed: authProvider.isLoading ? null : () {
         // Show confirmation dialog
         showDialog(
           context: context,
@@ -350,9 +351,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 child: const Text('Cancel'),
               ),
               TextButton(
-                onPressed: () {
+                onPressed: () async {
                   // Perform logout
                   Navigator.of(context).pop();
+                  await authProvider.logout();
+
+                  if (!mounted) return;
+
                   Navigator.of(context).pushAndRemoveUntil(
                     MaterialPageRoute(builder: (context) => const LoginScreen()),
                         (route) => false,
@@ -364,7 +369,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         );
       },
-      icon: const Icon(Icons.logout),
+      icon: authProvider.isLoading
+          ? const SizedBox(
+        height: 20,
+        width: 20,
+        child: CircularProgressIndicator(
+          color: Colors.white,
+          strokeWidth: 2,
+        ),
+      )
+          : const Icon(Icons.logout),
       label: const Text('Logout'),
       style: ElevatedButton.styleFrom(
         backgroundColor: Colors.red,

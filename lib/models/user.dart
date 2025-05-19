@@ -48,10 +48,10 @@ class User {
   // Create from Map for database retrieval
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
-      id: map['id'],
-      name: map['name'],
-      email: map['email'],
-      mrn: map['mrn'],
+      id: map['id'] ?? '',
+      name: map['name'] ?? '',
+      email: map['email'] ?? '',
+      mrn: map['mrn'] ?? '',
       phone: map['phone'],
       address: map['address'],
       dateOfBirth: map['dateOfBirth'],
@@ -61,5 +61,15 @@ class User {
       medications: map['medications'] != null ? List<String>.from(map['medications']) : null,
       conditions: map['conditions'] != null ? List<String>.from(map['conditions']) : null,
     );
+  }
+
+  // Create from JSON
+  factory User.fromJson(Map<String, dynamic> json) {
+    return User.fromMap(json);
+  }
+
+  // Convert to JSON
+  Map<String, dynamic> toJson() {
+    return toMap();
   }
 }

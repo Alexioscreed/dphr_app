@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
 import 'login_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
@@ -14,9 +16,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
-  bool _isLoading = false;
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
+  String _errorMessage = '';
 
   @override
   void dispose() {
@@ -30,44 +32,52 @@ class _RegisterScreenState extends State<RegisterScreen> {
   Future<void> _register() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
-        _isLoading = true;
+        _errorMessage = '';
       });
 
       try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 2));
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+        final success = await authProvider.register(
+          _nameController.text,
+          _emailController.text,
+          _passwordController.text,
+        );
 
         if (!mounted) return;
 
-        // Show success message and navigate to login
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Registration successful! Please login.')),
-        );
+        if (success) {
+          // Show success message and navigate to login
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Registration successful! Please login.')),
+          );
 
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-        );
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+          );
+        } else {
+          // Show error message
+          setState(() {
+            _errorMessage = authProvider.error;
+          });
+        }
       } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-
-        if (!mounted) return;
-
         // Show error message
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Registration failed: ${e.toString()}')),
-        );
+        setState(() {
+          _errorMessage = e.toString();
+        });
       }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Create Account'),
-        backgroundColor: const Color(0xFF2196F3), // Updated to blue
+        backgroundColor: const Color(0xFF2196F3),
         foregroundColor: Colors.white,
       ),
       body: SafeArea(
@@ -78,6 +88,21 @@ class _RegisterScreenState extends State<RegisterScreen> {
               mainAxisAlignment: MainAxisAlignment.center,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
+                // Error message
+                if (_errorMessage.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      _errorMessage,
+                      style: TextStyle(color: Colors.red.shade800),
+                    ),
+                  ),
+
                 // Registration form
                 Form(
                   key: _formKey,
@@ -177,15 +202,15 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _register,
+                        onPressed: authProvider.isLoading ? null : _register,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF2196F3), // Updated to blue
+                          backgroundColor: const Color(0xFF2196F3),
                           padding: const EdgeInsets.symmetric(vertical: 16),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: _isLoading
+                        child: authProvider.isLoading
                             ? const SizedBox(
                           height: 20,
                           width: 20,
@@ -218,7 +243,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
                       },
                       child: const Text('Login'),
                       style: TextButton.styleFrom(
-                        foregroundColor: Color(0xFF2196F3), // Updated to blue
+                        foregroundColor: const Color(0xFF2196F3),
                       ),
                     ),
                   ],

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../health_records/health_records_screen.dart';
 import '../progress/health_progress_screen.dart';
 import '../settings/settings_screen.dart';
@@ -8,6 +9,8 @@ import '../appointments/appointments_screen.dart';
 import '../appointments/book_appointment_screen.dart';
 import '../sharing/share_data_screen.dart';
 import '../log_section_screen.dart';
+import '../../providers/auth_provider.dart';
+import '../auth/login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -22,7 +25,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final List<Widget> _screens = [
     const DashboardHomeScreen(),
     const HealthRecordsScreen(),
-    const LogSectionScreen(), // Updated to use the new LogSectionScreen
+    const LogSectionScreen(),
     const HealthProgressScreen(),
     const AppointmentsScreen(),
   ];
@@ -30,13 +33,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    final authProvider = Provider.of<AuthProvider>(context);
+
+    // Redirect to login if not authenticated
+    if (!authProvider.isAuthenticated) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        Navigator.of(context).pushReplacement(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+        );
+      });
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
       appBar: AppBar(
         title: const Text(
           'DPHR Dashboard',
           style: TextStyle(
-            color: Color(0xFF2196F3), // Updated to blue
+            color: Color(0xFF2196F3),
             fontWeight: FontWeight.bold,
           ),
         ),
@@ -75,7 +89,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             backgroundColor: isDarkMode
                 ? const Color(0xFF1E1E1E)
                 : Colors.white,
-            selectedItemColor: const Color(0xFF2196F3), // Fresh blue color that works well in both modes
+            selectedItemColor: const Color(0xFF2196F3),
             unselectedItemColor: Colors.grey,
             showUnselectedLabels: true,
             selectedLabelStyle: const TextStyle(
@@ -123,7 +137,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-// Rest of the DashboardHomeScreen class remains unchanged
 class DashboardHomeScreen extends StatelessWidget {
   const DashboardHomeScreen({Key? key}) : super(key: key);
 
@@ -134,11 +147,11 @@ class DashboardHomeScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          _buildUserGreeting(),
+          _buildUserGreeting(context),
           const SizedBox(height: 24),
           _buildHealthSummary(),
           const SizedBox(height: 24),
-          _buildRecentActivity(),
+          _buildRecentActivity(context),
           const SizedBox(height: 24),
           _buildQuickActions(context),
         ],
@@ -146,37 +159,43 @@ class DashboardHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildUserGreeting() {
-    return const Card(
+  Widget _buildUserGreeting(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+    final user = authProvider.currentUser;
+
+    return Card(
       elevation: 2,
       child: Padding(
-        padding: EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(16.0),
         child: Row(
           children: [
             CircleAvatar(
               radius: 30,
-              backgroundColor: Color(0xFF1976D2),
-              child: Icon(
-                Icons.person,
-                size: 40,
-                color: Colors.white,
+              backgroundColor: const Color(0xFF1976D2),
+              child: Text(
+                user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.white,
+                ),
               ),
             ),
-            SizedBox(width: 16),
+            const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Hello, John Doe',
-                  style: TextStyle(
+                  'Hello, ${user?.name ?? 'User'}',
+                  style: const TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
                   ),
                 ),
-                SizedBox(height: 4),
+                const SizedBox(height: 4),
                 Text(
-                  'Last check-up: 15 May 2023',
-                  style: TextStyle(
+                  user?.email ?? 'user@example.com',
+                  style: const TextStyle(
                     color: Colors.grey,
                   ),
                 ),
@@ -287,7 +306,7 @@ class DashboardHomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentActivity() {
+  Widget _buildRecentActivity(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -304,10 +323,10 @@ class DashboardHomeScreen extends StatelessWidget {
           child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: 3, // Updated to match the number of activities
+            itemCount: 3,
             separatorBuilder: (context, index) => const Divider(),
             itemBuilder: (context, index) {
-              List<Map<String, dynamic>> activities = [
+              final List<Map<String, dynamic>> activities = [
                 {
                   'icon': Icons.medical_services,
                   'title': 'Doctor Recommendation',
@@ -386,12 +405,11 @@ class DashboardHomeScreen extends StatelessWidget {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 24), // Increased spacing
-        // Fixed height container for quick actions
+        const SizedBox(height: 24),
         SizedBox(
-          height: 120, // Increased height
+          height: 120,
           child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly, // Changed to spaceEvenly for better distribution
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
               _buildActionButton(
                 icon: Icons.add_circle,
@@ -455,12 +473,12 @@ class DashboardHomeScreen extends StatelessWidget {
                 color: Colors.white,
               ),
             ),
-            const SizedBox(height: 10), // Increased spacing
+            const SizedBox(height: 10),
             Text(
               label,
               style: const TextStyle(
                 fontSize: 12,
-                height: 1.2, // Added line height for better text spacing
+                height: 1.2,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,

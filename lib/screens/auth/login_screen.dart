@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../home/dashboard_screen.dart';
 import 'register_screen.dart';
 import 'forgot_password_screen.dart';
+import '../../providers/auth_provider.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({Key? key}) : super(key: key);
@@ -14,7 +16,6 @@ class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  bool _isLoading = false;
   bool _obscurePassword = true;
 
   @override
@@ -26,27 +27,27 @@ class _LoginScreenState extends State<LoginScreen> {
 
   Future<void> _login() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
       try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 2));
-
-        if (!mounted) return;
-
-        // Navigate to dashboard on successful login
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final success = await authProvider.login(
+          _emailController.text,
+          _passwordController.text,
         );
-      } catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
 
         if (!mounted) return;
 
+        if (success) {
+          // Navigate to dashboard on successful login
+          Navigator.of(context).pushReplacement(
+            MaterialPageRoute(builder: (context) => const DashboardScreen()),
+          );
+        } else {
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Login failed: ${authProvider.error}')),
+          );
+        }
+      } catch (e) {
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Login failed: ${e.toString()}')),
@@ -57,6 +58,8 @@ class _LoginScreenState extends State<LoginScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final authProvider = Provider.of<AuthProvider>(context);
+
     return Scaffold(
       body: SafeArea(
         child: Center(
@@ -104,6 +107,21 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
                 const SizedBox(height: 48),
+
+                // Error message
+                if (authProvider.error.isNotEmpty)
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    margin: const EdgeInsets.only(bottom: 16),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade100,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      authProvider.error,
+                      style: TextStyle(color: Colors.red.shade800),
+                    ),
+                  ),
 
                 // Login form
                 Form(
@@ -175,7 +193,7 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                       const SizedBox(height: 24),
                       ElevatedButton(
-                        onPressed: _isLoading ? null : _login,
+                        onPressed: authProvider.isLoading ? null : _login,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: const Color(0xFF2196F3), // Updated to blue
                           padding: const EdgeInsets.symmetric(vertical: 16),
@@ -183,7 +201,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             borderRadius: BorderRadius.circular(8),
                           ),
                         ),
-                        child: _isLoading
+                        child: authProvider.isLoading
                             ? const SizedBox(
                           height: 20,
                           width: 20,

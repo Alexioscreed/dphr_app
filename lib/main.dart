@@ -22,7 +22,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ApiProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
-        ChangeNotifierProvider(create: (_) => VitalMeasurementsProvider()), // Added the new provider
+        ChangeNotifierProvider(create: (_) => VitalMeasurementsProvider()),
       ],
       child: const MyApp(),
     ),
@@ -30,10 +30,13 @@ void main() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key}); // Updated to use super.key for Flutter 24
+  const MyApp({super.key});
 
   @override
   Widget build(BuildContext context) {
+    // Initialize auth provider
+    Provider.of<AuthProvider>(context, listen: false).initialize();
+
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(

@@ -1,138 +1,88 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
-import '../models/shared_record.dart';
+import '../services/auth_service.dart';
 
 class ApiService {
-  final String baseUrl;
-  final String username;
-  final String password;
-  final String hfrCode;
-  String? _token;
+  final String baseUrl = 'http://10.0.2.2:8080/api';
+  final AuthService _authService;
 
-  ApiService({
-    required this.baseUrl,
-    required this.username,
-    required this.password,
-    required this.hfrCode,
-  });
+  ApiService(this._authService);
 
-  // Get authentication token
-  Future<String> getToken() async {
-    if (_token != null) {
-      return _token!;
-    }
-
+  // GET request
+  Future<dynamic> get(String endpoint) async {
     try {
-      final response = await http.post(
-        Uri.parse('$baseUrl/auth/token'),
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: jsonEncode({
-          'username': username,
-          'password': password,
-        }),
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        _token = data['token'];
-        return _token!;
-      } else {
-        throw Exception('Failed to get token: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to get token: $e');
-    }
-  }
-
-  // Get headers with authentication token
-  Future<Map<String, String>> _getHeaders() async {
-    final token = await getToken();
-    return {
-      'Content-Type': 'application/json',
-      'Authorization': 'Bearer $token',
-      'HFR-Code': hfrCode,
-    };
-  }
-
-  // Register a client
-  Future<Map<String, dynamic>> registerClient(Map<String, dynamic> clientData) async {
-    try {
-      final headers = await _getHeaders();
-      final response = await http.post(
-        Uri.parse('$baseUrl/clients/register'),
-        headers: headers,
-        body: jsonEncode(clientData),
-      );
-
-      if (response.statusCode == 201) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to register client: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to register client: $e');
-    }
-  }
-
-  // Fetch shared records
-  Future<List<SharedRecord>> fetchSharedRecords() async {
-    try {
-      final headers = await _getHeaders();
       final response = await http.get(
-        Uri.parse('$baseUrl/shared-records'),
-        headers: headers,
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: _authService.getAuthHeaders(),
       );
 
-      if (response.statusCode == 200) {
-        final List<dynamic> data = jsonDecode(response.body);
-        return data.map((item) => SharedRecord.fromMap(item)).toList();
-      } else {
-        throw Exception('Failed to fetch shared records: ${response.statusCode}');
-      }
+      return _handleResponse(response);
     } catch (e) {
-      throw Exception('Failed to fetch shared records: $e');
+      throw Exception('GET request failed: ${e.toString()}');
     }
   }
 
-  // Get shared record by ID
-  Future<SharedRecord> getSharedRecordById(String id) async {
+  // POST request
+  Future<dynamic> post(String endpoint, dynamic data) async {
     try {
-      final headers = await _getHeaders();
-      final response = await http.get(
-        Uri.parse('$baseUrl/shared-records/$id'),
-        headers: headers,
-      );
-
-      if (response.statusCode == 200) {
-        final data = jsonDecode(response.body);
-        return SharedRecord.fromMap(data);
-      } else {
-        throw Exception('Failed to get shared record: ${response.statusCode}');
-      }
-    } catch (e) {
-      throw Exception('Failed to get shared record: $e');
-    }
-  }
-
-  // Share health record
-  Future<Map<String, dynamic>> shareHealthRecord(Map<String, dynamic> shareData) async {
-    try {
-      final headers = await _getHeaders();
       final response = await http.post(
-        Uri.parse('$baseUrl/share-record'),
-        headers: headers,
-        body: jsonEncode(shareData),
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: _authService.getAuthHeaders(),
+        body: jsonEncode(data),
       );
 
-      if (response.statusCode == 201) {
-        return jsonDecode(response.body);
-      } else {
-        throw Exception('Failed to share record: ${response.statusCode}');
-      }
+      return _handleResponse(response);
     } catch (e) {
-      throw Exception('Failed to share record: $e');
+      throw Exception('POST request failed: ${e.toString()}');
+    }
+  }
+
+  // PUT request
+  Future<dynamic> put(String endpoint, dynamic data) async {
+    try {
+      final response = await http.put(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: _authService.getAuthHeaders(),
+        body: jsonEncode(data),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('PUT request failed: ${e.toString()}');
+    }
+  }
+
+  // DELETE request
+  Future<dynamic> delete(String endpoint) async {
+    try {
+      final response = await http.delete(
+        Uri.parse('$baseUrl/$endpoint'),
+        headers: _authService.getAuthHeaders(),
+      );
+
+      return _handleResponse(response);
+    } catch (e) {
+      throw Exception('DELETE request failed: ${e.toString()}');
+    }
+  }
+
+  // Handle API response
+  dynamic _handleResponse(http.Response response) {
+    if (response.statusCode >= 200 && response.statusCode < 300) {
+      if (response.body.isEmpty) return null;
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 401) {
+      // Handle unauthorized - clear token
+      _authService.logout();
+      throw Exception('Session expired. Please login again.');
+    } else {
+      // Handle other errors
+      try {
+        final error = jsonDecode(response.body);
+        throw Exception(error['message'] ?? 'Request failed with status: ${response.statusCode}');
+      } catch (e) {
+        throw Exception('Request failed with status: ${response.statusCode}');
+      }
     }
   }
 }
