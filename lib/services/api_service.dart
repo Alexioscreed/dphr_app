@@ -1,9 +1,10 @@
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import '../services/auth_service.dart';
+import '../config/app_config.dart';
 
 class ApiService {
-  final String baseUrl = 'http://10.0.2.2:8080/api';
+  final String baseUrl = AppConfig.baseApiUrl;
   final AuthService _authService;
 
   ApiService(this._authService);
@@ -79,7 +80,8 @@ class ApiService {
       // Handle other errors
       try {
         final error = jsonDecode(response.body);
-        throw Exception(error['message'] ?? 'Request failed with status: ${response.statusCode}');
+        throw Exception(error['message'] ??
+            'Request failed with status: ${response.statusCode}');
       } catch (e) {
         throw Exception('Request failed with status: ${response.statusCode}');
       }

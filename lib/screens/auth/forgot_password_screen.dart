@@ -1,4 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../providers/auth_provider.dart';
+import 'verification_code_screen.dart';
 
 class ForgotPasswordScreen extends StatefulWidget {
   const ForgotPasswordScreen({Key? key}) : super(key: key);
@@ -11,7 +14,6 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   bool _isLoading = false;
-  bool _resetSent = false;
 
   @override
   void dispose() {
@@ -24,15 +26,37 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       setState(() {
         _isLoading = true;
       });
-
       try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 2));
+        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+        final success = await authProvider.sendResetCode(_emailController.text);
 
-        setState(() {
-          _isLoading = false;
-          _resetSent = true;
-        });
+        if (!mounted) return;
+
+        if (success) {
+          setState(() {
+            _isLoading = false;
+          });
+
+          // Navigate to verification code screen
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => VerificationCodeScreen(
+                email: _emailController.text,
+              ),
+            ),
+          );
+        } else {
+          setState(() {
+            _isLoading = false;
+          });
+
+          // Show error message
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+                content:
+                    Text('Failed to send reset code: ${authProvider.error}')),
+          );
+        }
       } catch (e) {
         setState(() {
           _isLoading = false;
@@ -42,7 +66,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
 
         // Show error message
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to send reset link: ${e.toString()}')),
+          SnackBar(content: Text('Failed to send reset code: ${e.toString()}')),
         );
       }
     }
@@ -59,7 +83,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
-          child: _resetSent ? _buildSuccessMessage() : _buildResetForm(),
+          child: _buildResetForm(),
         ),
       ),
     );
@@ -80,7 +104,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Enter your email address and we\'ll send you a link to reset your password.',
+            'Enter your email address and we\'ll send you a 6-digit verification code to reset your password.',
             style: TextStyle(
               color: Colors.grey,
               fontSize: 16,
@@ -99,7 +123,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
               if (value == null || value.isEmpty) {
                 return 'Please enter your email';
               }
-              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+              if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                  .hasMatch(value)) {
                 return 'Please enter a valid email';
               }
               return null;
@@ -117,83 +142,23 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
             ),
             child: _isLoading
                 ? const SizedBox(
-              height: 20,
-              width: 20,
-              child: CircularProgressIndicator(
-                color: Colors.white,
-                strokeWidth: 2,
-              ),
-            )
+                    height: 20,
+                    width: 20,
+                    child: CircularProgressIndicator(
+                      color: Colors.white,
+                      strokeWidth: 2,
+                    ),
+                  )
                 : const Text(
-              'Send Reset Link',
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+                    'Send Verification Code',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildSuccessMessage() {
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      crossAxisAlignment: CrossAxisAlignment.center,
-      children: [
-        const Icon(
-          Icons.check_circle,
-          color: Color(0xFF2196F3), // Blue color
-          size: 80,
-        ),
-        const SizedBox(height: 24),
-        const Text(
-          'Reset Link Sent',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Text(
-          'We\'ve sent a password reset link to ${_emailController.text}',
-          textAlign: TextAlign.center,
-          style: const TextStyle(
-            fontSize: 16,
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 8),
-        const Text(
-          'Please check your email and follow the instructions to reset your password.',
-          textAlign: TextAlign.center,
-          style: TextStyle(
-            fontSize: 16,
-            color: Colors.grey,
-          ),
-        ),
-        const SizedBox(height: 32),
-        ElevatedButton(
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
-          style: ElevatedButton.styleFrom(
-            backgroundColor: const Color(0xFF2196F3), // Blue color
-            padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(8),
-            ),
-          ),
-          child: const Text(
-            'Back to Login',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
-      ],
     );
   }
 }

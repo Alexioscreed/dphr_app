@@ -76,6 +76,71 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // Forgot Password
+  Future<bool> forgotPassword(String email) async {
+    _setLoading(true);
+    try {
+      await _authService.forgotPassword(email);
+      _error = '';
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Forgot password error: $_error');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Send Reset Code
+  Future<bool> sendResetCode(String email) async {
+    _setLoading(true);
+    try {
+      await _authService.sendResetCode(email);
+      _error = '';
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Send reset code error: $_error');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Verify Reset Code
+  Future<bool> verifyResetCode(String email, String code) async {
+    _setLoading(true);
+    try {
+      await _authService.verifyResetCode(email, code);
+      _error = '';
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Verify reset code error: $_error');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Reset Password with Code
+  Future<bool> resetPasswordWithCode(
+      String email, String code, String newPassword) async {
+    _setLoading(true);
+    try {
+      await _authService.resetPasswordWithCode(email, code, newPassword);
+      _error = '';
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Reset password with code error: $_error');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Logout
   Future<void> logout() async {
     _setLoading(true);

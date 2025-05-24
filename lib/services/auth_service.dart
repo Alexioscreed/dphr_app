@@ -50,18 +50,20 @@ class AuthService {
       final client = http.Client();
 
       try {
-        final response = await client.post(
-          Uri.parse(url),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode({
-            'name': name,
-            'email': email,
-            'password': password,
-          }),
-        ).timeout(Duration(seconds: AppConfig.connectionTimeout));
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'name': name,
+                'email': email,
+                'password': password,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
 
         debugPrint('Response status: ${response.statusCode}');
         debugPrint('Response body: ${response.body}');
@@ -73,9 +75,11 @@ class AuthService {
           String errorMsg;
           try {
             final error = jsonDecode(response.body);
-            errorMsg = error['message'] ?? 'Registration failed with status: ${response.statusCode}';
+            errorMsg = error['message'] ??
+                'Registration failed with status: ${response.statusCode}';
           } catch (_) {
-            errorMsg = 'Registration failed with status: ${response.statusCode}';
+            errorMsg =
+                'Registration failed with status: ${response.statusCode}';
           }
           throw Exception(errorMsg);
         }
@@ -87,7 +91,8 @@ class AuthService {
 
       // Provide more specific error messages
       if (e is SocketException) {
-        throw Exception('Cannot connect to server. Please check your internet connection and try again.');
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
       } else if (e is http.ClientException) {
         throw Exception('Network error: ${e.message}. Please try again later.');
       } else if (e is TimeoutException) {
@@ -107,17 +112,19 @@ class AuthService {
       final client = http.Client();
 
       try {
-        final response = await client.post(
-          Uri.parse(url),
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-          },
-          body: jsonEncode({
-            'email': email,
-            'password': password,
-          }),
-        ).timeout(Duration(seconds: AppConfig.connectionTimeout));
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'email': email,
+                'password': password,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
 
         debugPrint('Response status: ${response.statusCode}');
 
@@ -143,7 +150,8 @@ class AuthService {
           String errorMsg;
           try {
             final error = jsonDecode(response.body);
-            errorMsg = error['message'] ?? 'Login failed with status: ${response.statusCode}';
+            errorMsg = error['message'] ??
+                'Login failed with status: ${response.statusCode}';
           } catch (_) {
             errorMsg = 'Login failed with status: ${response.statusCode}';
           }
@@ -157,13 +165,255 @@ class AuthService {
 
       // Provide more specific error messages
       if (e is SocketException) {
-        throw Exception('Cannot connect to server. Please check your internet connection and try again.');
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
       } else if (e is http.ClientException) {
         throw Exception('Network error: ${e.message}. Please try again later.');
       } else if (e is TimeoutException) {
         throw Exception('Connection timed out. Please try again later.');
       } else {
         throw Exception('Login failed: $e');
+      }
+    }
+  }
+
+  // Forgot Password
+  Future<String> forgotPassword(String email) async {
+    try {
+      final url = '${AppConfig.baseApiUrl}/auth/forgot-password';
+      debugPrint('Attempting forgot password at: $url');
+
+      final client = http.Client();
+
+      try {
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'email': email,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+
+        debugPrint('Forgot password response status: ${response.statusCode}');
+        debugPrint('Forgot password response body: ${response.body}');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response.body; // Return the success message
+        } else {
+          String errorMsg;
+          try {
+            final error = jsonDecode(response.body);
+            errorMsg = error['message'] ??
+                'Failed to send reset link with status: ${response.statusCode}';
+          } catch (_) {
+            errorMsg =
+                'Failed to send reset link with status: ${response.statusCode}';
+          }
+          throw Exception(errorMsg);
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      debugPrint('Forgot password exception: $e');
+
+      // Provide more specific error messages
+      if (e is SocketException) {
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
+      } else if (e is http.ClientException) {
+        throw Exception('Network error: ${e.message}. Please try again later.');
+      } else if (e is TimeoutException) {
+        throw Exception('Connection timed out. Please try again later.');
+      } else {
+        throw Exception('Failed to send reset link: $e');
+      }
+    }
+  }
+
+  // Send Reset Code
+  Future<String> sendResetCode(String email) async {
+    try {
+      final url = '${AppConfig.baseApiUrl}/auth/send-reset-code';
+      debugPrint('Attempting to send reset code at: $url');
+
+      final client = http.Client();
+
+      try {
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'email': email,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+
+        debugPrint('Send reset code response status: ${response.statusCode}');
+        debugPrint('Send reset code response body: ${response.body}');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response.body; // Return the success message
+        } else {
+          String errorMsg;
+          try {
+            final error = jsonDecode(response.body);
+            errorMsg = error['message'] ??
+                'Failed to send reset code with status: ${response.statusCode}';
+          } catch (_) {
+            errorMsg =
+                'Failed to send reset code with status: ${response.statusCode}';
+          }
+          throw Exception(errorMsg);
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      debugPrint('Send reset code exception: $e');
+
+      // Provide more specific error messages
+      if (e is SocketException) {
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
+      } else if (e is http.ClientException) {
+        throw Exception('Network error: ${e.message}. Please try again later.');
+      } else if (e is TimeoutException) {
+        throw Exception('Connection timed out. Please try again later.');
+      } else {
+        throw Exception('Failed to send reset code: $e');
+      }
+    }
+  }
+
+  // Verify Reset Code
+  Future<String> verifyResetCode(String email, String code) async {
+    try {
+      final url = '${AppConfig.baseApiUrl}/auth/verify-reset-code';
+      debugPrint('Attempting to verify reset code at: $url');
+
+      final client = http.Client();
+
+      try {
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'email': email,
+                'code': code,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+
+        debugPrint('Verify reset code response status: ${response.statusCode}');
+        debugPrint('Verify reset code response body: ${response.body}');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response.body; // Return the success message
+        } else {
+          String errorMsg;
+          try {
+            final error = jsonDecode(response.body);
+            errorMsg = error['message'] ??
+                'Failed to verify reset code with status: ${response.statusCode}';
+          } catch (_) {
+            errorMsg =
+                'Failed to verify reset code with status: ${response.statusCode}';
+          }
+          throw Exception(errorMsg);
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      debugPrint('Verify reset code exception: $e');
+
+      // Provide more specific error messages
+      if (e is SocketException) {
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
+      } else if (e is http.ClientException) {
+        throw Exception('Network error: ${e.message}. Please try again later.');
+      } else if (e is TimeoutException) {
+        throw Exception('Connection timed out. Please try again later.');
+      } else {
+        throw Exception('Failed to verify reset code: $e');
+      }
+    }
+  }
+
+  // Reset Password with Code
+  Future<String> resetPasswordWithCode(
+      String email, String code, String newPassword) async {
+    try {
+      final url = '${AppConfig.baseApiUrl}/auth/reset-password-with-code';
+      debugPrint('Attempting to reset password with code at: $url');
+
+      final client = http.Client();
+
+      try {
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'email': email,
+                'code': code,
+                'newPassword': newPassword,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+
+        debugPrint(
+            'Reset password with code response status: ${response.statusCode}');
+        debugPrint('Reset password with code response body: ${response.body}');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          return response.body; // Return the success message
+        } else {
+          String errorMsg;
+          try {
+            final error = jsonDecode(response.body);
+            errorMsg = error['message'] ??
+                'Failed to reset password with status: ${response.statusCode}';
+          } catch (_) {
+            errorMsg =
+                'Failed to reset password with status: ${response.statusCode}';
+          }
+          throw Exception(errorMsg);
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      debugPrint('Reset password with code exception: $e');
+
+      // Provide more specific error messages
+      if (e is SocketException) {
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
+      } else if (e is http.ClientException) {
+        throw Exception('Network error: ${e.message}. Please try again later.');
+      } else if (e is TimeoutException) {
+        throw Exception('Connection timed out. Please try again later.');
+      } else {
+        throw Exception('Failed to reset password with code: $e');
       }
     }
   }
