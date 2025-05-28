@@ -3,9 +3,11 @@ import '../services/auth_service.dart';
 import '../models/user.dart';
 
 class AuthProvider with ChangeNotifier {
-  final AuthService _authService = AuthService();
+  final AuthService _authService;
   bool _isLoading = false;
   String _error = '';
+
+  AuthProvider(this._authService);
 
   // Getters
   bool get isLoading => _isLoading;

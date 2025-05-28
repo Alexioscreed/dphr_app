@@ -8,16 +8,73 @@ import 'providers/api_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/appointment_provider.dart';
 import 'providers/vital_measurements_provider.dart';
+import 'services/auth_service.dart';
+import 'services/api_service.dart';
+import 'services/medical_records_service.dart';
+import 'services/doctor_service.dart';
+import 'services/prescription_service.dart';
+import 'services/connectivity_service.dart';
+import 'services/cache_service.dart';
 
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
-
+  
+  // Initialize services
+  final connectivityService = ConnectivityService();
+  await connectivityService.initialize();
+  
+  final cacheService = CacheService();
+  await cacheService.init();
+  
   runApp(
     MultiProvider(
       providers: [
-        ChangeNotifierProvider(create: (_) => AuthProvider()),
-        ChangeNotifierProvider(create: (_) => HealthRecordProvider()),
+        // Initialize ConnectivityService first
+        ChangeNotifierProvider<ConnectivityService>.value(
+          value: connectivityService,
+        ),
+        // Initialize CacheService 
+        Provider<CacheService>.value(
+          value: cacheService,
+        ),
+        // Initialize AuthService first as it's a dependency for others
+        Provider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+        // Initialize ApiService with AuthService dependency
+        ProxyProvider<AuthService, ApiService>(
+          update: (context, authService, previous) => ApiService(authService),
+        ), // Initialize MedicalRecordsService with ApiService dependency
+        ProxyProvider<ApiService, MedicalRecordsService>(
+          update: (context, apiService, previous) =>
+              MedicalRecordsService(apiService),
+        ),
+        // Initialize DoctorService with ApiService dependency
+        ProxyProvider<ApiService, DoctorService>(
+          update: (context, apiService, previous) => DoctorService(apiService),
+        ),
+        // Initialize PrescriptionService with ApiService dependency
+        ProxyProvider<ApiService, PrescriptionService>(
+          update: (context, apiService, previous) =>
+              PrescriptionService(apiService),        ), // Initialize providers with dependencies
+        ChangeNotifierProxyProvider<AuthService, AuthProvider>(
+          create: (context) =>
+              AuthProvider(Provider.of<AuthService>(context, listen: false)),
+          update: (context, authService, previous) =>
+              previous ?? AuthProvider(authService),
+        ),
+        ChangeNotifierProxyProvider4<MedicalRecordsService, AuthService, ConnectivityService, CacheService,
+            HealthRecordProvider>(
+          create: (context) => HealthRecordProvider(
+            Provider.of<MedicalRecordsService>(context, listen: false),
+            Provider.of<AuthService>(context, listen: false),
+            Provider.of<ConnectivityService>(context, listen: false),
+            Provider.of<CacheService>(context, listen: false),
+          ),
+          update: (context, medicalRecordsService, authService, connectivityService, cacheService, previous) =>
+              previous ?? HealthRecordProvider(medicalRecordsService, authService, connectivityService, cacheService),
+        ),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApiProvider()),
         ChangeNotifierProvider(create: (_) => ThemeProvider()),

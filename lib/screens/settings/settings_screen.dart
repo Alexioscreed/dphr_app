@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/health_record_provider.dart';
+import '../../services/connectivity_service.dart';
 import '../auth/login_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -52,10 +54,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
           _buildSectionHeader('Notifications'),
           _buildNotificationSettings(),
+          const SizedBox(height: 24),          _buildSectionHeader('Security'),
+          _buildSecuritySettings(),
           const SizedBox(height: 24),
 
-          _buildSectionHeader('Security'),
-          _buildSecuritySettings(),
+          _buildSectionHeader('Data Management'),
+          _buildDataManagementSettings(),
           const SizedBox(height: 24),
 
           _buildSectionHeader('Language'),
@@ -249,8 +253,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               });
             },
           ),
-          const Divider(height: 1),
-          ListTile(
+          const Divider(height: 1),          ListTile(
             leading: const Icon(Icons.security),
             title: const Text('Privacy Settings'),
             trailing: const Icon(Icons.chevron_right),
@@ -260,6 +263,139 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildDataManagementSettings() {
+    return Consumer<ConnectivityService>(
+      builder: (context, connectivityService, child) {
+        return Consumer<HealthRecordProvider>(
+          builder: (context, healthRecordProvider, child) {
+            return Card(
+              elevation: 2,
+              child: Column(
+                children: [
+                  ListTile(
+                    leading: const Icon(Icons.cloud_sync),
+                    title: const Text('Sync Status'),
+                    subtitle: Text(
+                      connectivityService.isOnline 
+                          ? 'Online - Data will sync automatically'
+                          : healthRecordProvider.lastSyncTime != null
+                              ? 'Offline - Last synced ${_formatLastSync(healthRecordProvider.lastSyncTime!)}'
+                              : 'Offline - No cached data available',
+                    ),
+                    trailing: connectivityService.isOnline
+                        ? Icon(Icons.cloud_done, color: Colors.green)
+                        : Icon(Icons.cloud_off, color: Colors.orange),
+                  ),
+                  if (connectivityService.isOnline) ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.refresh),
+                      title: const Text('Refresh Data'),
+                      subtitle: const Text('Force sync with server'),
+                      trailing: healthRecordProvider.isLoading
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(strokeWidth: 2),
+                            )
+                          : const Icon(Icons.chevron_right),
+                      onTap: healthRecordProvider.isLoading
+                          ? null
+                          : () async {
+                              await healthRecordProvider.refreshHealthRecords();
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  const SnackBar(
+                                    content: Text('Data refreshed successfully'),
+                                    backgroundColor: Colors.green,
+                                  ),
+                                );
+                              }
+                            },
+                    ),
+                  ],
+                  const Divider(height: 1),
+                  ListTile(
+                    leading: const Icon(Icons.storage),
+                    title: const Text('Cache Information'),
+                    subtitle: Text(
+                      healthRecordProvider.healthRecords.isNotEmpty || healthRecordProvider.encounters.isNotEmpty
+                          ? '${healthRecordProvider.healthRecords.length} health records, ${healthRecordProvider.encounters.length} encounters cached'
+                          : 'No cached data',
+                    ),
+                    trailing: const Icon(Icons.info_outline),
+                  ),
+                  if (healthRecordProvider.healthRecords.isNotEmpty || healthRecordProvider.encounters.isNotEmpty) ...[
+                    const Divider(height: 1),
+                    ListTile(
+                      leading: const Icon(Icons.delete_outline, color: Colors.red),
+                      title: const Text('Clear Cache'),
+                      subtitle: const Text('Remove all locally stored data'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => _showClearCacheDialog(healthRecordProvider),
+                    ),
+                  ],
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  String _formatLastSync(DateTime lastSync) {
+    final now = DateTime.now();
+    final difference = now.difference(lastSync);
+    
+    if (difference.inDays > 0) {
+      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
+    } else {
+      return 'just now';
+    }
+  }
+
+  void _showClearCacheDialog(HealthRecordProvider provider) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Clear Cache'),
+          content: const Text(
+            'This will remove all locally stored health records and encounters. '
+            'You will need an internet connection to view your data again. '
+            'Are you sure you want to continue?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () async {
+                Navigator.of(context).pop();
+                await provider.clearCache();
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Cache cleared successfully'),
+                      backgroundColor: Colors.green,
+                    ),
+                  );
+                }
+              },
+              child: const Text('Clear', style: TextStyle(color: Colors.red)),
+            ),
+          ],
+        );
+      },
     );
   }
 

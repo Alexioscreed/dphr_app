@@ -1,69 +1,224 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import '../models/health_record.dart';
+import '../models/encounter.dart';
+import '../models/patient.dart';
+import '../services/medical_records_service.dart';
+import '../services/auth_service.dart';
+import '../services/connectivity_service.dart';
+import '../services/cache_service.dart';
 
 class HealthRecordProvider with ChangeNotifier {
+  final MedicalRecordsService _medicalRecordsService;
+  final AuthService _authService;
+  final ConnectivityService _connectivityService;
+  final CacheService _cacheService;
+
   List<HealthRecord> _healthRecords = [];
+  List<Encounter> _encounters = [];
+  Patient? _currentPatient;
   bool _isLoading = false;
   String _error = '';
-
+  bool _isOffline = false;
+  DateTime? _lastSyncTime;
+  HealthRecordProvider(
+    this._medicalRecordsService,
+    this._authService,
+    this._connectivityService,
+    this._cacheService,
+  ) {
+    _connectivityService.addListener(_onConnectivityChanged);
+    _isOffline = !_connectivityService.isOnline;
+  }
   List<HealthRecord> get healthRecords => [..._healthRecords];
+  List<Encounter> get encounters => [..._encounters];
+  Patient? get currentPatient => _currentPatient;
   bool get isLoading => _isLoading;
   String get error => _error;
+  bool get isOffline => _isOffline;
+  DateTime? get lastSyncTime => _lastSyncTime;
+  void _onConnectivityChanged() {
+    final wasOffline = _isOffline;
+    _isOffline = !_connectivityService.isOnline;
 
-  // Fetch health records
-  Future<void> fetchHealthRecords() async {
+    if (wasOffline && !_isOffline) {
+      // Just came back online, try to sync
+      debugPrint('Connectivity restored, attempting to sync data');
+      fetchHealthRecords();
+    }
+    notifyListeners();
+  }
+
+  @override
+  void dispose() {
+    _connectivityService.removeListener(_onConnectivityChanged);
+    super.dispose();
+  } // Fetch health records from backend with offline-first approach
+
+  Future<void> fetchHealthRecords({bool forceRefresh = false}) async {
     _isLoading = true;
+    _error = '';
     notifyListeners();
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
+      // Get current user
+      final currentUser = _authService.currentUser;
+      debugPrint('Current user: ${currentUser?.toJson()}');
+      debugPrint('Patient UUID: ${currentUser?.patientUuid}');
 
-      // Sample health records
-      _healthRecords = [
-        HealthRecord(
-          id: '1',
-          title: 'Annual Physical Examination',
-          date: DateTime.now().subtract(const Duration(days: 30)),
-          provider: 'Dr. John Smith',
-          type: 'Examination',
-          description: 'Annual physical examination with blood work and vitals check.',
-          attachments: ['physical_exam_report.pdf', 'blood_work_results.pdf'],
-        ),
-        HealthRecord(
-          id: '2',
-          title: 'COVID-19 Vaccination',
-          date: DateTime.now().subtract(const Duration(days: 60)),
-          provider: 'City Health Department',
-          type: 'Vaccination',
-          description: 'COVID-19 vaccination - Pfizer BioNTech, 2nd dose.',
-          attachments: ['vaccination_certificate.pdf'],
-        ),
-        HealthRecord(
-          id: '3',
-          title: 'Dental Checkup',
-          date: DateTime.now().subtract(const Duration(days: 90)),
-          provider: 'Dr. Sarah Johnson',
-          type: 'Dental',
-          description: 'Regular dental checkup and cleaning.',
-          attachments: ['dental_xrays.jpg', 'dental_report.pdf'],
-        ),
-        HealthRecord(
-          id: '4',
-          title: 'Allergy Test Results',
-          date: DateTime.now().subtract(const Duration(days: 120)),
-          provider: 'Allergy Specialists Inc.',
-          type: 'Laboratory',
-          description: 'Comprehensive allergy panel testing for food and environmental allergies.',
-          attachments: ['allergy_test_results.pdf'],
-        ),
-      ];
+      if (currentUser?.patientUuid == null) {
+        throw Exception('No patient UUID found. Please login again.');
+      }
 
-      _isLoading = false;
-      notifyListeners();
+      final patientUuid = currentUser!.patientUuid!;
+
+      // Check if we should load from cache first
+      if (!forceRefresh &&
+          (!_connectivityService.isOnline ||
+              await _cacheService.isCacheFresh())) {
+        await _loadFromCache(patientUuid);
+
+        // If offline and cache loaded successfully, stop here
+        if (!_connectivityService.isOnline &&
+            (_healthRecords.isNotEmpty || _encounters.isNotEmpty)) {
+          _isLoading = false;
+          notifyListeners();
+          return;
+        }
+      }
+
+      // If online, fetch from network and update cache
+      if (_connectivityService.isOnline) {
+        await _fetchFromNetwork(patientUuid);
+      } else {
+        // If offline and no cache, show appropriate message
+        if (_healthRecords.isEmpty && _encounters.isEmpty) {
+          throw Exception(
+              'No internet connection and no cached data available. Please connect to the internet to view your health records.');
+        }
+      }
     } catch (e) {
       _error = e.toString();
+      debugPrint('Error fetching health records: $e');
+
+      // If there's an error and we're online, try to load from cache as fallback
+      if (_connectivityService.isOnline && !forceRefresh) {
+        try {
+          final currentUser = _authService.currentUser;
+          if (currentUser?.patientUuid != null) {
+            await _loadFromCache(currentUser!.patientUuid!);
+            _error =
+                'Failed to fetch latest data. Showing cached data. $_error';
+          }
+        } catch (cacheError) {
+          debugPrint('Failed to load from cache: $cacheError');
+        }
+      }
+    } finally {
       _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _loadFromCache(String patientUuid) async {
+    debugPrint('Loading health records from cache for patient: $patientUuid');
+
+    // Load cached data
+    final cachedHealthRecords = await _cacheService.getCachedHealthRecords();
+    final cachedEncounters = await _cacheService.getCachedEncounters();
+    final cachedPatient =
+        await _cacheService.getCachedData('patient_$patientUuid');
+
+    if (cachedHealthRecords != null) {
+      _healthRecords = cachedHealthRecords;
+      debugPrint('Loaded ${_healthRecords.length} health records from cache');
+    }
+
+    if (cachedEncounters != null) {
+      _encounters = cachedEncounters;
+      debugPrint('Loaded ${_encounters.length} encounters from cache');
+    }
+    if (cachedPatient != null) {
+      try {
+        // If cachedPatient is a string, parse it; if it's already a Map, use it directly
+        final patientData =
+            cachedPatient is String ? jsonDecode(cachedPatient) : cachedPatient;
+        _currentPatient = Patient.fromJson(patientData);
+        debugPrint('Loaded patient data from cache');
+      } catch (e) {
+        debugPrint('Error parsing cached patient data: $e');
+        // If there's an error parsing, clear the corrupted cache
+        await _cacheService.clearCache('patient_$patientUuid');
+      }
+    }
+
+    _lastSyncTime = await _cacheService.getLastSyncTime();
+  }
+
+  Future<void> _fetchFromNetwork(String patientUuid) async {
+    debugPrint(
+        'Fetching health records from network for patient: $patientUuid');
+
+    // Get patient information by UUID
+    _currentPatient =
+        await _medicalRecordsService.getPatientByUuid(patientUuid);
+    if (_currentPatient == null) {
+      throw Exception('Patient not found');
+    }
+
+    // Cache patient data
+    await _cacheService.cacheData('patient_$patientUuid',
+        _currentPatient!.toJson()); // Get encounters for the patient
+    _encounters =
+        await _medicalRecordsService.getPatientEncounters(_currentPatient!.id!);
+
+    // Convert encounters to health records for backward compatibility
+    final healthRecordData =
+        _medicalRecordsService.convertEncountersToHealthRecords(_encounters);
+
+    _healthRecords = healthRecordData.map((recordData) {
+      return HealthRecord(
+        id: recordData['id'],
+        title: recordData['title'],
+        date: DateTime.parse(recordData['date']),
+        provider: recordData['provider'],
+        type: recordData['type'],
+        description: recordData['description'],
+        attachments: List<String>.from(recordData['attachments']),
+      );
+    }).toList(); // Cache the fetched data
+    await _cacheService.cacheHealthRecords(_healthRecords);
+    await _cacheService.cacheEncounters(_encounters);
+
+    _lastSyncTime = DateTime.now();
+    debugPrint(
+        'Successfully fetched and cached ${_healthRecords.length} health records and ${_encounters.length} encounters');
+  }
+
+  // Force refresh data from network
+  Future<void> refreshHealthRecords() async {
+    if (!_connectivityService.isOnline) {
+      _error = 'No internet connection. Cannot refresh data.';
+      notifyListeners();
+      return;
+    }
+
+    await fetchHealthRecords(forceRefresh: true);
+  }
+
+  // Clear cached data
+  Future<void> clearCache() async {
+    final currentUser = _authService.currentUser;
+    if (currentUser?.patientUuid != null) {
+      final patientUuid = currentUser!.patientUuid!;
+      await _cacheService.clearHealthRecordsCache();
+      await _cacheService.clearCache('patient_$patientUuid');
+
+      _healthRecords.clear();
+      _encounters.clear();
+      _currentPatient = null;
+      _lastSyncTime = null;
       notifyListeners();
     }
   }
@@ -77,16 +232,121 @@ class HealthRecordProvider with ChangeNotifier {
     }
   }
 
+  // Get encounter by ID
+  Encounter? getEncounterById(int id) {
+    try {
+      return _encounters.firstWhere((encounter) => encounter.id == id);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Fetch encounters by date range
+  Future<void> fetchEncountersByDateRange(
+      DateTime startDate, DateTime endDate) async {
+    if (_currentPatient?.id == null) {
+      _error = 'Patient ID not found';
+      notifyListeners();
+      return;
+    }
+
+    _isLoading = true;
+    _error = '';
+    notifyListeners();
+
+    try {
+      _encounters =
+          await _medicalRecordsService.getPatientEncountersByDateRange(
+        _currentPatient!.id!,
+        startDate,
+        endDate,
+      );
+
+      // Convert to health records
+      final healthRecordData =
+          _medicalRecordsService.convertEncountersToHealthRecords(_encounters);
+
+      _healthRecords = healthRecordData.map((recordData) {
+        return HealthRecord(
+          id: recordData['id'],
+          title: recordData['title'],
+          date: DateTime.parse(recordData['date']),
+          provider: recordData['provider'],
+          type: recordData['type'],
+          description: recordData['description'],
+          attachments: List<String>.from(recordData['attachments']),
+        );
+      }).toList();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
   // Add health record
   Future<void> addHealthRecord(HealthRecord record) async {
     _isLoading = true;
     notifyListeners();
 
     try {
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 1));
-
+      // For now, just add to local list
+      // In the future, this would create an encounter in the backend
       _healthRecords.add(record);
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Create a new encounter
+  Future<void> createEncounter(Encounter encounter) async {
+    _isLoading = true;
+    _error = '';
+    notifyListeners();
+
+    try {
+      final newEncounter =
+          await _medicalRecordsService.createEncounter(encounter);
+      _encounters.add(newEncounter);
+
+      // Refresh health records
+      await fetchHealthRecords();
+
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  // Update an encounter
+  Future<void> updateEncounter(Encounter encounter) async {
+    _isLoading = true;
+    _error = '';
+    notifyListeners();
+
+    try {
+      final updatedEncounter =
+          await _medicalRecordsService.updateEncounter(encounter);
+
+      // Update in local list
+      final index = _encounters.indexWhere((e) => e.id == updatedEncounter.id);
+      if (index != -1) {
+        _encounters[index] = updatedEncounter;
+      }
+
+      // Refresh health records
+      await fetchHealthRecords();
 
       _isLoading = false;
       notifyListeners();

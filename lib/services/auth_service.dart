@@ -125,24 +125,32 @@ class AuthService {
               }),
             )
             .timeout(Duration(seconds: AppConfig.connectionTimeout));
-
         debugPrint('Response status: ${response.statusCode}');
+        debugPrint('Raw response body: ${response.body}');
 
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final data = jsonDecode(response.body);
+          debugPrint('Parsed response data: $data');
+          debugPrint('Token: ${data['token']}');
+          debugPrint('Patient UUID: ${data['patientUuid']}');
+
           _token = data['token'];
 
           // Save token to SharedPreferences
           final prefs = await SharedPreferences.getInstance();
           await prefs.setString(tokenKey, _token!);
 
-          // Create a basic user object with the email
+          // Create a basic user object with the response data
           _currentUser = User(
-            id: '1',
+            id: data['id']?.toString() ?? '1',
             name: data['name'] ?? 'User',
             email: email,
             mrn: data['mrn'] ?? 'MRN123',
+            patientUuid:
+                data['patientUuid'], // Store the patient UUID from backend
           );
+
+          debugPrint('Created user: ${_currentUser?.toJson()}');
 
           // Save user data to SharedPreferences
           await prefs.setString(userKey, jsonEncode(_currentUser!.toJson()));

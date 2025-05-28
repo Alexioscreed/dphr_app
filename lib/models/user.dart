@@ -3,6 +3,7 @@ class User {
   final String name;
   final String email;
   final String mrn;
+  final String? patientUuid; // OpenMRS-style Patient UUID
   final String? phone;
   final String? address;
   final String? dateOfBirth;
@@ -17,6 +18,7 @@ class User {
     required this.name,
     required this.email,
     required this.mrn,
+    this.patientUuid,
     this.phone,
     this.address,
     this.dateOfBirth,
@@ -26,7 +28,6 @@ class User {
     this.medications,
     this.conditions,
   });
-
   // Convert to Map for database storage
   Map<String, dynamic> toMap() {
     return {
@@ -34,6 +35,7 @@ class User {
       'name': name,
       'email': email,
       'mrn': mrn,
+      'patientUuid': patientUuid,
       'phone': phone,
       'address': address,
       'dateOfBirth': dateOfBirth,
@@ -44,7 +46,6 @@ class User {
       'conditions': conditions,
     };
   }
-
   // Create from Map for database retrieval
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
@@ -52,6 +53,7 @@ class User {
       name: map['name'] ?? '',
       email: map['email'] ?? '',
       mrn: map['mrn'] ?? '',
+      patientUuid: map['patientUuid'],
       phone: map['phone'],
       address: map['address'],
       dateOfBirth: map['dateOfBirth'],
