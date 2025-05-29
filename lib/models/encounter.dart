@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'lab_result.dart';
 import 'medication.dart';
 import 'diagnosis_detail.dart';
@@ -5,7 +6,7 @@ import 'treatment.dart';
 import 'doctor.dart';
 
 class Encounter {
-  final int? id;
+  final dynamic id; // Can be int (from database) or String (UUID from file)
   final int patientId;
   final int? doctorId;
   final Doctor? doctor;
@@ -63,7 +64,7 @@ class Encounter {
   // Create from Map for API responses
   factory Encounter.fromMap(Map<String, dynamic> map) {
     return Encounter(
-      id: map['id']?.toInt(),
+      id: map['id'], // Keep as-is, can be int or string
       patientId: map['patientId']?.toInt() ?? 0,
       encounterType: map['encounterType'] ?? '',
       encounterDateTime: DateTime.parse(map['encounterDateTime']),
@@ -98,9 +99,8 @@ class Encounter {
           [],
     );
   }
-
   // Convert to JSON string
-  String toJson() => toMap().toString();
+  String toJson() => jsonEncode(toMap());
 
   // Create from JSON string
   factory Encounter.fromJson(Map<String, dynamic> json) =>

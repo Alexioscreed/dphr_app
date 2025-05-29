@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 class Patient {
   final int? id;
   final String? patientUuid;
@@ -73,9 +75,8 @@ class Patient {
       allergies: map['allergies'],
     );
   }
-
   // Convert to JSON string
-  String toJson() => toMap().toString();
+  String toJson() => jsonEncode(toMap());
 
   // Create from JSON string
   factory Patient.fromJson(Map<String, dynamic> json) => Patient.fromMap(json);

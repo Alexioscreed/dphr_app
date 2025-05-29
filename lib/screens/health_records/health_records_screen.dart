@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/health_record_provider.dart';
@@ -8,6 +9,7 @@ import '../../models/health_record.dart';
 import 'health_record_detail_screen.dart';
 import 'enhanced_encounter_detail_screen.dart';
 import '../../models/encounter.dart';
+import '../admin/testing_admin_screen.dart';
 
 class HealthRecordsScreen extends StatefulWidget {
   const HealthRecordsScreen({Key? key}) : super(key: key);
@@ -85,8 +87,7 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
                                   TextStyle(color: Colors.white, fontSize: 12)),
                         ],
                       ),
-                    ),
-                  // Refresh button
+                    ), // Refresh button
                   IconButton(
                     onPressed: connectivityService.isOnline
                         ? () => healthRecordProvider.refreshHealthRecords()
@@ -96,6 +97,19 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
                         ? 'Refresh data'
                         : 'No internet connection',
                   ),
+                  // Debug/Testing button (only in debug mode)
+                  if (kDebugMode)
+                    IconButton(
+                      onPressed: () {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) => const TestingAdminScreen(),
+                          ),
+                        );
+                      },
+                      icon: const Icon(Icons.bug_report),
+                      tooltip: 'Testing Admin',
+                    ),
                   IconButton(
                     onPressed: () {
                       setState(() {

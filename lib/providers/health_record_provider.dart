@@ -150,6 +150,9 @@ class HealthRecordProvider with ChangeNotifier {
         debugPrint('Error parsing cached patient data: $e');
         // If there's an error parsing, clear the corrupted cache
         await _cacheService.clearCache('patient_$patientUuid');
+        debugPrint('Cleared corrupted patient cache data');
+        // Set current patient to null so it will be fetched fresh
+        _currentPatient = null;
       }
     }
 
@@ -160,18 +163,64 @@ class HealthRecordProvider with ChangeNotifier {
     debugPrint(
         'Fetching health records from network for patient: $patientUuid');
 
-    // Get patient information by UUID
+    // Try to get patient information by UUID (if available)
     _currentPatient =
         await _medicalRecordsService.getPatientByUuid(patientUuid);
+
+    // If patient not found in database, create a placeholder from auth data
     if (_currentPatient == null) {
-      throw Exception('Patient not found');
+      final currentUser = _authService.currentUser;
+      if (currentUser != null) {
+        _currentPatient = Patient(
+          id: null, // No database ID yet
+          patientUuid: patientUuid,
+          mrn: currentUser.mrn,
+          firstName: currentUser.name.split(' ').first,
+          lastName: currentUser.name.split(' ').length > 1
+              ? currentUser.name.split(' ').last
+              : '',
+          email: currentUser.email,
+          phoneNumber: currentUser.phone,
+          dateOfBirth: currentUser.dateOfBirth != null
+              ? DateTime.tryParse(currentUser.dateOfBirth!)
+              : null,
+          gender: currentUser.gender,
+          bloodType: currentUser.bloodType,
+          address: currentUser.address,
+          allergies: currentUser.allergies?.join(', '),
+        );
+      } else {
+        throw Exception('Patient not found and no auth data available');
+      }
     }
 
     // Cache patient data
-    await _cacheService.cacheData('patient_$patientUuid',
-        _currentPatient!.toJson()); // Get encounters for the patient
-    _encounters =
-        await _medicalRecordsService.getPatientEncounters(_currentPatient!.id!);
+    await _cacheService.cacheData(
+        'patient_$patientUuid', _currentPatient!.toJson());
+
+    // Get encounters from file using patientUuid (NEW approach)
+    debugPrint('Checking for encounters in file for patientUuid: $patientUuid');
+    final hasFileEncounters =
+        await _medicalRecordsService.hasEncountersInFile(patientUuid);
+
+    if (hasFileEncounters) {
+      debugPrint('Found encounters in file, fetching...');
+      _encounters = await _medicalRecordsService
+          .getPatientEncountersFromFile(patientUuid);
+      debugPrint('Loaded ${_encounters.length} encounters from file');
+    } else {
+      debugPrint('No encounters found in file for patientUuid: $patientUuid');
+      // If patient exists in database, try getting encounters from database
+      if (_currentPatient!.id != null) {
+        _encounters = await _medicalRecordsService
+            .getPatientEncounters(_currentPatient!.id!);
+        debugPrint('Loaded ${_encounters.length} encounters from database');
+      } else {
+        _encounters = [];
+        debugPrint(
+            'No encounters found - patient needs to be linked to encounters in JSON file');
+      }
+    }
 
     // Convert encounters to health records for backward compatibility
     final healthRecordData =
@@ -187,7 +236,9 @@ class HealthRecordProvider with ChangeNotifier {
         description: recordData['description'],
         attachments: List<String>.from(recordData['attachments']),
       );
-    }).toList(); // Cache the fetched data
+    }).toList();
+
+    // Cache the fetched data
     await _cacheService.cacheHealthRecords(_healthRecords);
     await _cacheService.cacheEncounters(_encounters);
 
@@ -233,9 +284,10 @@ class HealthRecordProvider with ChangeNotifier {
   }
 
   // Get encounter by ID
-  Encounter? getEncounterById(int id) {
+  Encounter? getEncounterById(dynamic id) {
     try {
-      return _encounters.firstWhere((encounter) => encounter.id == id);
+      return _encounters
+          .firstWhere((encounter) => encounter.id.toString() == id.toString());
     } catch (e) {
       return null;
     }

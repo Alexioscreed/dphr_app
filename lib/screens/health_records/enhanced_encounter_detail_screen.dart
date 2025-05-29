@@ -7,7 +7,7 @@ import '../../models/encounter.dart';
 import '../../models/patient.dart';
 
 class EnhancedEncounterDetailScreen extends StatelessWidget {
-  final int encounterId;
+  final dynamic encounterId; // Can be int or String
 
   const EnhancedEncounterDetailScreen({
     Key? key,
