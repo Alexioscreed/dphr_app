@@ -57,7 +57,7 @@ class MedicalRecordsService {
   }
 
   // Get a specific encounter by ID
-  Future<Encounter?> getEncounterById(dynamic encounterId) async {
+  Future<Encounter?> getEncounterById(int encounterId) async {
     try {
       final response = await _apiService.get('encounters/$encounterId');
 
@@ -177,12 +177,11 @@ class MedicalRecordsService {
       throw Exception('Failed to fetch patients: $e');
     }
   }
-
   // Convert encounters to health records for backward compatibility
   List<dynamic> convertEncountersToHealthRecords(List<Encounter> encounters) {
     return encounters.map((encounter) {
       return {
-        'id': encounter.id.toString(),
+        'id': encounter.id.toString(), // Convert any ID type to string
         'title': _getEncounterTitle(encounter),
         'date': encounter.encounterDateTime.toIso8601String(),
         'provider': encounter.provider,
@@ -243,11 +242,9 @@ class MedicalRecordsService {
   }
 
   // NEW: Get encounters from JSON file by patient UUID
-  Future<List<Encounter>> getPatientEncountersFromFile(
-      String patientUuid) async {
+  Future<List<Encounter>> getPatientEncountersFromFile(String patientUuid) async {
     try {
-      final response =
-          await _apiService.get('encounters/file/patient/$patientUuid');
+      final response = await _apiService.get('encounters/file/patient/$patientUuid');
 
       if (response != null && response['encounters'] is List) {
         final encountersData = response['encounters'] as List;
@@ -255,8 +252,7 @@ class MedicalRecordsService {
             .map((encounterData) => _mapJsonToEncounter(encounterData))
             .toList();
       } else {
-        debugPrint(
-            'No encounters found in file for patient UUID: $patientUuid');
+        debugPrint('No encounters found in file for patient UUID: $patientUuid');
         return [];
       }
     } catch (e) {
@@ -268,9 +264,8 @@ class MedicalRecordsService {
   // NEW: Check if patient has encounters in file
   Future<bool> hasEncountersInFile(String patientUuid) async {
     try {
-      final response =
-          await _apiService.get('encounters/file/patient/$patientUuid/exists');
-
+      final response = await _apiService.get('encounters/file/patient/$patientUuid/exists');
+      
       if (response != null && response['hasEncounters'] is bool) {
         return response['hasEncounters'] as bool;
       }
@@ -282,11 +277,9 @@ class MedicalRecordsService {
   }
 
   // NEW: Get encounters summary from file
-  Future<Map<String, dynamic>?> getPatientEncountersSummaryFromFile(
-      String patientUuid) async {
+  Future<Map<String, dynamic>?> getPatientEncountersSummaryFromFile(String patientUuid) async {
     try {
-      final response =
-          await _apiService.get('encounters/file/patient/$patientUuid/summary');
+      final response = await _apiService.get('encounters/file/patient/$patientUuid/summary');
       return response;
     } catch (e) {
       debugPrint('Error fetching encounters summary from file: $e');
@@ -312,17 +305,14 @@ class MedicalRecordsService {
       debugPrint('Error fetching all encounters from file: $e');
       throw Exception('Failed to fetch all encounters from file: $e');
     }
-  }
-
-  // Helper method to map JSON encounter data to Encounter object
+  }  // Helper method to map JSON encounter data to Encounter object
   Encounter _mapJsonToEncounter(Map<String, dynamic> encounterData) {
     try {
       return Encounter(
-        id: encounterData['encounterId'],
+        id: encounterData['encounterId'], // Keep as String UUID for file-based encounters
         patientId: 0, // Will be filled from context
         encounterType: encounterData['encounterType'] ?? '',
-        encounterDateTime: DateTime.parse(encounterData['encounterDateTime'] ??
-            DateTime.now().toIso8601String()),
+        encounterDateTime: DateTime.parse(encounterData['encounterDateTime'] ?? DateTime.now().toIso8601String()),
         location: encounterData['location'] ?? '',
         provider: encounterData['provider'] ?? '',
         notes: encounterData['notes'] ?? '',
@@ -340,7 +330,7 @@ class MedicalRecordsService {
       debugPrint('Error mapping JSON to Encounter: $e');
       // Return a default encounter if mapping fails
       return Encounter(
-        id: encounterData['encounterId'] ?? 0,
+        id: encounterData['encounterId'] ?? 'unknown-${DateTime.now().millisecondsSinceEpoch}',
         patientId: 0,
         encounterType: 'UNKNOWN',
         encounterDateTime: DateTime.now(),
@@ -363,17 +353,14 @@ class MedicalRecordsService {
   List<VitalSign> _parseVitalSigns(dynamic vitalSignsData) {
     if (vitalSignsData == null || vitalSignsData is! List) {
       return [];
-    }
-    try {
+    }    try {
       return vitalSignsData.map<VitalSign>((vitalData) {
         return VitalSign(
           patientId: 0, // Will be set from context
           type: vitalData['type'] ?? '',
           value: vitalData['value']?.toString() ?? '',
-          recordedAt: DateTime.parse(
-              vitalData['dateTime'] ?? DateTime.now().toIso8601String()),
-          notes:
-              vitalData['unit'] != null ? 'Unit: ${vitalData['unit']}' : null,
+          recordedAt: DateTime.parse(vitalData['dateTime'] ?? DateTime.now().toIso8601String()),
+          notes: vitalData['unit'] != null ? 'Unit: ${vitalData['unit']}' : null,
         );
       }).toList();
     } catch (e) {
@@ -386,8 +373,7 @@ class MedicalRecordsService {
   List<LabResult> _parseLabResults(dynamic labResultsData) {
     if (labResultsData == null || labResultsData is! List) {
       return [];
-    }
-    try {
+    }    try {
       return labResultsData.map<LabResult>((labData) {
         return LabResult(
           encounterId: 0, // Will be set from context
@@ -397,8 +383,7 @@ class MedicalRecordsService {
           normalRange: labData['referenceRange'] ?? '',
           unit: labData['unit'] ?? '',
           status: 'completed',
-          resultDateTime: DateTime.parse(
-              labData['dateTime'] ?? DateTime.now().toIso8601String()),
+          resultDateTime: DateTime.parse(labData['dateTime'] ?? DateTime.now().toIso8601String()),
           laboratory: 'Laboratory Services',
           technician: '',
           notes: '',
@@ -414,8 +399,7 @@ class MedicalRecordsService {
   List<Medication> _parseMedications(dynamic medicationsData) {
     if (medicationsData == null || medicationsData is! List) {
       return [];
-    }
-    try {
+    }    try {
       return medicationsData.map<Medication>((medData) {
         return Medication(
           encounterId: 0, // Will be set from context

@@ -150,9 +150,6 @@ class HealthRecordProvider with ChangeNotifier {
         debugPrint('Error parsing cached patient data: $e');
         // If there's an error parsing, clear the corrupted cache
         await _cacheService.clearCache('patient_$patientUuid');
-        debugPrint('Cleared corrupted patient cache data');
-        // Set current patient to null so it will be fetched fresh
-        _currentPatient = null;
       }
     }
 
@@ -286,8 +283,7 @@ class HealthRecordProvider with ChangeNotifier {
   // Get encounter by ID
   Encounter? getEncounterById(dynamic id) {
     try {
-      return _encounters
-          .firstWhere((encounter) => encounter.id.toString() == id.toString());
+      return _encounters.firstWhere((encounter) => encounter.id == id);
     } catch (e) {
       return null;
     }

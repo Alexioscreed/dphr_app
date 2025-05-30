@@ -87,7 +87,7 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
                                   TextStyle(color: Colors.white, fontSize: 12)),
                         ],
                       ),
-                    ), // Refresh button
+                    ),                  // Refresh button
                   IconButton(
                     onPressed: connectivityService.isOnline
                         ? () => healthRecordProvider.refreshHealthRecords()

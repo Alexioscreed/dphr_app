@@ -1,5 +1,3 @@
-import 'dart:convert';
-
 class Patient {
   final int? id;
   final String? patientUuid;
@@ -51,13 +49,12 @@ class Patient {
       'emergencyContactName': emergencyContactName,
       'emergencyContactPhone': emergencyContactPhone,
       'allergies': allergies,
-    };
-  }
+    };  }
 
   // Create from Map for API responses
   factory Patient.fromMap(Map<String, dynamic> map) {
     return Patient(
-      id: map['id']?.toInt(),
+      id: map['id'] is String ? int.tryParse(map['id']) : map['id'],
       patientUuid: map['patientUuid'],
       mrn: map['mrn'],
       firstName: map['firstName'] ?? '',
@@ -75,8 +72,9 @@ class Patient {
       allergies: map['allergies'],
     );
   }
+
   // Convert to JSON string
-  String toJson() => jsonEncode(toMap());
+  String toJson() => toMap().toString();
 
   // Create from JSON string
   factory Patient.fromJson(Map<String, dynamic> json) => Patient.fromMap(json);

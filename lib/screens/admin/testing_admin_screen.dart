@@ -48,23 +48,23 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
             // Current User Info
             _buildCurrentUserCard(currentUser),
             const SizedBox(height: 20),
-
+            
             // Test Controls
             _buildTestControlsCard(),
             const SizedBox(height: 20),
-
+            
             // Status Message
             if (_statusMessage.isNotEmpty) ...[
               _buildStatusCard(),
               const SizedBox(height: 20),
             ],
-
+            
             // Encounter Summary
             if (_encounterSummary != null) ...[
               _buildEncounterSummaryCard(),
               const SizedBox(height: 20),
             ],
-
+            
             // All Encounters List
             if (_allEncounters.isNotEmpty) ...[
               _buildAllEncountersCard(),
@@ -94,8 +94,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
             if (currentUser != null) ...[
               _buildInfoRow('Name', currentUser.name),
               _buildInfoRow('Email', currentUser.email),
-              _buildInfoRow(
-                  'Patient UUID', currentUser.patientUuid ?? 'Not Set'),
+              _buildInfoRow('Patient UUID', currentUser.patientUuid ?? 'Not Set'),
               _buildInfoRow('MRN', currentUser.mrn ?? 'Not Set'),
               const SizedBox(height: 10),
               Row(
@@ -103,12 +102,9 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
                   ElevatedButton.icon(
                     onPressed: () {
                       if (currentUser.patientUuid != null) {
-                        Clipboard.setData(
-                            ClipboardData(text: currentUser.patientUuid!));
+                        Clipboard.setData(ClipboardData(text: currentUser.patientUuid!));
                         ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('Patient UUID copied to clipboard')),
+                          const SnackBar(content: Text('Patient UUID copied to clipboard')),
                         );
                       }
                     },
@@ -117,8 +113,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
                   ),
                   const SizedBox(width: 10),
                   ElevatedButton.icon(
-                    onPressed: () =>
-                        _checkCurrentUserEncounters(currentUser.patientUuid),
+                    onPressed: () => _checkCurrentUserEncounters(currentUser.patientUuid),
                     icon: const Icon(Icons.search),
                     label: const Text('Check Encounters'),
                   ),
@@ -162,9 +157,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
               spacing: 10,
               children: [
                 ElevatedButton.icon(
-                  onPressed: _isLoading
-                      ? null
-                      : () => _testPatientEncounters(_testPatientUuid),
+                  onPressed: _isLoading ? null : () => _testPatientEncounters(_testPatientUuid),
                   icon: const Icon(Icons.person_search),
                   label: const Text('Test Patient'),
                 ),
@@ -193,9 +186,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
   Widget _buildStatusCard() {
     return Card(
       elevation: 2,
-      color: _statusMessage.contains('Error')
-          ? Colors.red.shade100
-          : Colors.green.shade100,
+      color: _statusMessage.contains('Error') ? Colors.red.shade100 : Colors.green.shade100,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -204,12 +195,8 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
             Row(
               children: [
                 Icon(
-                  _statusMessage.contains('Error')
-                      ? Icons.error
-                      : Icons.check_circle,
-                  color: _statusMessage.contains('Error')
-                      ? Colors.red
-                      : Colors.green,
+                  _statusMessage.contains('Error') ? Icons.error : Icons.check_circle,
+                  color: _statusMessage.contains('Error') ? Colors.red : Colors.green,
                 ),
                 const SizedBox(width: 8),
                 const Text(
@@ -246,19 +233,14 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
             ),
             const SizedBox(height: 12),
             _buildInfoRow('Patient UUID', _encounterSummary!['patientUuid']),
-            _buildInfoRow('Total Encounters',
-                _encounterSummary!['totalEncounters'].toString()),
+            _buildInfoRow('Total Encounters', _encounterSummary!['totalEncounters'].toString()),
             if (_encounterSummary!['hasEncounters'] == true) ...[
-              _buildInfoRow(
-                  'Latest Encounter', _encounterSummary!['latestEncounter']),
-              _buildInfoRow('Earliest Encounter',
-                  _encounterSummary!['earliestEncounter']),
+              _buildInfoRow('Latest Encounter', _encounterSummary!['latestEncounter']),
+              _buildInfoRow('Earliest Encounter', _encounterSummary!['earliestEncounter']),
               const SizedBox(height: 8),
-              const Text('Encounters by Type:',
-                  style: TextStyle(fontWeight: FontWeight.w500)),
+              const Text('Encounters by Type:', style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
-              ...(_encounterSummary!['encountersByType']
-                      as Map<String, dynamic>)
+              ...(_encounterSummary!['encountersByType'] as Map<String, dynamic>)
                   .entries
                   .map((entry) => Padding(
                         padding: const EdgeInsets.only(left: 16.0),
@@ -296,10 +278,8 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
                 return Card(
                   margin: const EdgeInsets.symmetric(vertical: 4),
                   child: ListTile(
-                    title: Text(
-                        '${encounter['encounterType']} - ${encounter['patientUuid']}'),
-                    subtitle: Text(
-                        '${encounter['location']} - ${encounter['encounterDateTime']}'),
+                    title: Text('${encounter['encounterType']} - ${encounter['patientUuid']}'),
+                    subtitle: Text('${encounter['location']} - ${encounter['encounterDateTime']}'),
                     trailing: Text('ID: ${encounter['encounterId']}'),
                   ),
                 );
@@ -339,7 +319,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
       });
       return;
     }
-
+    
     await _testPatientEncounters(patientUuid);
   }
 
@@ -359,16 +339,14 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
 
     try {
       // Check if encounters exist
-      final hasEncounters =
-          await _medicalRecordsService.hasEncountersInFile(patientUuid);
-
+      final hasEncounters = await _medicalRecordsService.hasEncountersInFile(patientUuid);
+      
       // Get summary
-      final summary = await _medicalRecordsService
-          .getPatientEncountersSummaryFromFile(patientUuid);
-
+      final summary = await _medicalRecordsService.getPatientEncountersSummaryFromFile(patientUuid);
+      
       setState(() {
         _encounterSummary = summary;
-        _statusMessage = hasEncounters
+        _statusMessage = hasEncounters 
             ? 'Success: Found ${summary?['totalEncounters'] ?? 0} encounters for UUID: $patientUuid'
             : 'Info: No encounters found for UUID: $patientUuid';
       });
@@ -390,22 +368,17 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
     });
 
     try {
-      final encounters =
-          await _medicalRecordsService.getAllEncountersFromFile();
-
+      final encounters = await _medicalRecordsService.getAllEncountersFromFile();
+      
       setState(() {
-        _allEncounters = encounters
-            .map((e) => {
-                  'encounterId': e.id,
-                  'patientUuid':
-                      'Unknown', // This would need to be added to the encounter model
-                  'encounterType': e.encounterType,
-                  'encounterDateTime': e.encounterDateTime.toIso8601String(),
-                  'location': e.location,
-                })
-            .toList();
-        _statusMessage =
-            'Success: Loaded ${encounters.length} encounters from file';
+        _allEncounters = encounters.map((e) => {
+          'encounterId': e.id,
+          'patientUuid': 'Unknown', // This would need to be added to the encounter model
+          'encounterType': e.encounterType,
+          'encounterDateTime': e.encounterDateTime.toIso8601String(),
+          'location': e.location,
+        }).toList();
+        _statusMessage = 'Success: Loaded ${encounters.length} encounters from file';
       });
     } catch (e) {
       setState(() {
@@ -419,14 +392,8 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
   }
 
   Future<void> _testPlaceholderUUIDs() async {
-    final placeholders = [
-      'xxxxxxxxxx',
-      'yyyyyyyyyy',
-      'zzzzzzzzzz',
-      'aaaaaaaaaa',
-      'bbbbbbbbbb'
-    ];
-
+    final placeholders = ['xxxxxxxxxx', 'yyyyyyyyyy', 'zzzzzzzzzz', 'aaaaaaaaaa', 'bbbbbbbbbb'];
+    
     setState(() {
       _isLoading = true;
       _statusMessage = '';
@@ -435,15 +402,12 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
     try {
       StringBuffer results = StringBuffer();
       for (String uuid in placeholders) {
-        final hasEncounters =
-            await _medicalRecordsService.hasEncountersInFile(uuid);
-        results.writeln(
-            '$uuid: ${hasEncounters ? "HAS ENCOUNTERS" : "NO ENCOUNTERS"}');
+        final hasEncounters = await _medicalRecordsService.hasEncountersInFile(uuid);
+        results.writeln('$uuid: ${hasEncounters ? "HAS ENCOUNTERS" : "NO ENCOUNTERS"}');
       }
-
+      
       setState(() {
-        _statusMessage =
-            'Placeholder UUID Test Results:\n${results.toString()}';
+        _statusMessage = 'Placeholder UUID Test Results:\n${results.toString()}';
       });
     } catch (e) {
       setState(() {

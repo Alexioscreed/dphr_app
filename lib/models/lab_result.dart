@@ -28,11 +28,10 @@ class LabResult {
     required this.technician,
     required this.notes,
   });
-
   factory LabResult.fromMap(Map<String, dynamic> map) {
     return LabResult(
-      id: map['id']?.toInt(),
-      encounterId: map['encounterId']?.toInt() ?? 0,
+      id: map['id'] is int ? map['id'] : (map['id'] != null ? int.tryParse(map['id'].toString()) : null),
+      encounterId: map['encounterId'] is int ? map['encounterId'] : (map['encounterId'] != null ? int.tryParse(map['encounterId'].toString()) ?? 0 : 0),
       testName: map['testName'] ?? '',
       testCode: map['testCode'] ?? '',
       value: map['value'] ?? '',

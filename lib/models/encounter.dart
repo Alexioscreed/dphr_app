@@ -23,8 +23,7 @@ class Encounter {
   final List<LabResult> labResults;
   final List<Medication> medications;
   final List<DiagnosisDetail> diagnoses;
-  final List<Treatment> treatments;
-  Encounter({
+  final List<Treatment> treatments;  Encounter({
     this.id,
     required this.patientId,
     this.doctorId,
@@ -59,13 +58,11 @@ class Encounter {
       'chiefComplaint': chiefComplaint,
       'status': status,
     };
-  }
-
-  // Create from Map for API responses
+  }  // Create from Map for API responses
   factory Encounter.fromMap(Map<String, dynamic> map) {
     return Encounter(
-      id: map['id'], // Keep as-is, can be int or string
-      patientId: map['patientId']?.toInt() ?? 0,
+      id: map['id'], // Keep as dynamic - can be int or String
+      patientId: map['patientId'] is int ? map['patientId'] : (map['patientId'] != null ? int.tryParse(map['patientId'].toString()) ?? 0 : 0),
       encounterType: map['encounterType'] ?? '',
       encounterDateTime: DateTime.parse(map['encounterDateTime']),
       location: map['location'] ?? '',
@@ -104,10 +101,9 @@ class Encounter {
 
   // Create from JSON string
   factory Encounter.fromJson(Map<String, dynamic> json) =>
-      Encounter.fromMap(json);
-  // Create a copy with updated fields
+      Encounter.fromMap(json);  // Create a copy with updated fields
   Encounter copyWith({
-    int? id,
+    dynamic id,
     int? patientId,
     String? encounterType,
     DateTime? encounterDateTime,
@@ -170,11 +166,10 @@ class Observation {
       'notes': notes,
     };
   }
-
   factory Observation.fromMap(Map<String, dynamic> map) {
     return Observation(
-      id: map['id']?.toInt(),
-      encounterId: map['encounterId']?.toInt(),
+      id: map['id'] is int ? map['id'] : (map['id'] != null ? int.tryParse(map['id'].toString()) : null),
+      encounterId: map['encounterId'] is int ? map['encounterId'] : (map['encounterId'] != null ? int.tryParse(map['encounterId'].toString()) : null),
       type: map['type'] ?? '',
       value: map['value'] ?? '',
       recordedAt: DateTime.parse(map['recordedAt']),
@@ -213,12 +208,11 @@ class VitalSign {
       'notes': notes,
     };
   }
-
   factory VitalSign.fromMap(Map<String, dynamic> map) {
     return VitalSign(
-      id: map['id']?.toInt(),
-      encounterId: map['encounterId']?.toInt(),
-      patientId: map['patientId']?.toInt() ?? 0,
+      id: map['id'] is int ? map['id'] : (map['id'] != null ? int.tryParse(map['id'].toString()) : null),
+      encounterId: map['encounterId'] is int ? map['encounterId'] : (map['encounterId'] != null ? int.tryParse(map['encounterId'].toString()) : null),
+      patientId: map['patientId'] is int ? map['patientId'] : (map['patientId'] != null ? int.tryParse(map['patientId'].toString()) ?? 0 : 0),
       type: map['type'] ?? '',
       value: map['value'] ?? '',
       recordedAt: DateTime.parse(map['recordedAt']),
