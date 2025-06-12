@@ -19,14 +19,14 @@ import 'services/cache_service.dart';
 void main() async {
   // Ensure Flutter is initialized
   WidgetsFlutterBinding.ensureInitialized();
-  
+
   // Initialize services
   final connectivityService = ConnectivityService();
   await connectivityService.initialize();
-  
+
   final cacheService = CacheService();
   await cacheService.init();
-  
+
   runApp(
     MultiProvider(
       providers: [
@@ -34,7 +34,7 @@ void main() async {
         ChangeNotifierProvider<ConnectivityService>.value(
           value: connectivityService,
         ),
-        // Initialize CacheService 
+        // Initialize CacheService
         Provider<CacheService>.value(
           value: cacheService,
         ),
@@ -45,10 +45,10 @@ void main() async {
         // Initialize ApiService with AuthService dependency
         ProxyProvider<AuthService, ApiService>(
           update: (context, authService, previous) => ApiService(authService),
-        ), // Initialize MedicalRecordsService with ApiService dependency
-        ProxyProvider<ApiService, MedicalRecordsService>(
-          update: (context, apiService, previous) =>
-              MedicalRecordsService(apiService),
+        ), // Initialize MedicalRecordsService with ApiService and AuthService dependencies
+        ProxyProvider2<ApiService, AuthService, MedicalRecordsService>(
+          update: (context, apiService, authService, previous) =>
+              MedicalRecordsService(apiService, authService),
         ),
         // Initialize DoctorService with ApiService dependency
         ProxyProvider<ApiService, DoctorService>(
@@ -57,27 +57,31 @@ void main() async {
         // Initialize PrescriptionService with ApiService dependency
         ProxyProvider<ApiService, PrescriptionService>(
           update: (context, apiService, previous) =>
-              PrescriptionService(apiService),        ), // Initialize providers with dependencies
+              PrescriptionService(apiService),
+        ), // Initialize providers with dependencies
         ChangeNotifierProxyProvider<AuthService, AuthProvider>(
           create: (context) =>
               AuthProvider(Provider.of<AuthService>(context, listen: false)),
           update: (context, authService, previous) =>
               previous ?? AuthProvider(authService),
         ),
-        ChangeNotifierProxyProvider4<MedicalRecordsService, AuthService, ConnectivityService, CacheService,
-            HealthRecordProvider>(
+        ChangeNotifierProxyProvider4<MedicalRecordsService, AuthService,
+            ConnectivityService, CacheService, HealthRecordProvider>(
           create: (context) => HealthRecordProvider(
             Provider.of<MedicalRecordsService>(context, listen: false),
             Provider.of<AuthService>(context, listen: false),
             Provider.of<ConnectivityService>(context, listen: false),
             Provider.of<CacheService>(context, listen: false),
           ),
-          update: (context, medicalRecordsService, authService, connectivityService, cacheService, previous) =>
-              previous ?? HealthRecordProvider(medicalRecordsService, authService, connectivityService, cacheService),
+          update: (context, medicalRecordsService, authService,
+                  connectivityService, cacheService, previous) =>
+              previous ??
+              HealthRecordProvider(medicalRecordsService, authService,
+                  connectivityService, cacheService),
         ),
         ChangeNotifierProvider(create: (_) => NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApiProvider()),
-        ChangeNotifierProvider(create: (_) => ThemeProvider()),
+        ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
         ChangeNotifierProvider(create: (_) => VitalMeasurementsProvider()),
       ],

@@ -155,14 +155,46 @@ class HealthRecordProvider with ChangeNotifier {
 
     _lastSyncTime = await _cacheService.getLastSyncTime();
   }
-
   Future<void> _fetchFromNetwork(String patientUuid) async {
     debugPrint(
         'Fetching health records from network for patient: $patientUuid');
 
-    // Try to get patient information by UUID (if available)
-    _currentPatient =
-        await _medicalRecordsService.getPatientByUuid(patientUuid);
+    // NEW: Use integrated medical records service to get comprehensive data
+    try {
+      // Get medical records using the new integrated endpoint
+      final medicalRecordsResponse = await _medicalRecordsService.getMedicalRecordsByPatientUuid(patientUuid);
+      
+      if (medicalRecordsResponse['patient'] != null) {
+        // Parse patient data from integrated response
+        final patientData = medicalRecordsResponse['patient'];        _currentPatient = Patient(
+          id: patientData['id'] != null ? int.tryParse(patientData['id'].toString()) : null,
+          patientUuid: patientData['patientUuid'] ?? patientUuid,
+          mrn: patientData['mrn'] ?? 'Unknown',
+          firstName: patientData['firstName'] ?? '',
+          lastName: patientData['lastName'] ?? '',
+          email: patientData['email'] ?? '',
+          phoneNumber: patientData['phoneNumber'],
+          dateOfBirth: patientData['dateOfBirth'] != null
+              ? DateTime.tryParse(patientData['dateOfBirth'])
+              : null,
+          gender: patientData['gender'],
+          bloodType: patientData['bloodType'],
+          address: patientData['address'],
+          allergies: patientData['allergies'],
+        );
+        debugPrint('Loaded patient data from integrated medical records: ${_currentPatient?.firstName} ${_currentPatient?.lastName}');
+      }
+      
+      // Get encounters using the new integrated service
+      _encounters = await _medicalRecordsService.getCurrentUserEncounters();
+      debugPrint('Loaded ${_encounters.length} encounters from integrated medical records service');
+      
+    } catch (e) {
+      debugPrint('Error fetching from integrated medical records, falling back to legacy methods: $e');
+      
+      // Fallback to legacy approach
+      _currentPatient = await _medicalRecordsService.getPatientByUuid(patientUuid);
+    }
 
     // If patient not found in database, create a placeholder from auth data
     if (_currentPatient == null) {
@@ -193,29 +225,41 @@ class HealthRecordProvider with ChangeNotifier {
 
     // Cache patient data
     await _cacheService.cacheData(
-        'patient_$patientUuid', _currentPatient!.toJson());
-
-    // Get encounters from file using patientUuid (NEW approach)
-    debugPrint('Checking for encounters in file for patientUuid: $patientUuid');
-    final hasFileEncounters =
-        await _medicalRecordsService.hasEncountersInFile(patientUuid);
-
-    if (hasFileEncounters) {
-      debugPrint('Found encounters in file, fetching...');
+        'patient_$patientUuid',
+        _currentPatient!
+            .toJson()); // Get encounters from database using patientUuid (UPDATED approach)
+    debugPrint(
+        'Fetching encounters from database for patientUuid: $patientUuid');
+    try {
       _encounters = await _medicalRecordsService
-          .getPatientEncountersFromFile(patientUuid);
-      debugPrint('Loaded ${_encounters.length} encounters from file');
-    } else {
-      debugPrint('No encounters found in file for patientUuid: $patientUuid');
-      // If patient exists in database, try getting encounters from database
-      if (_currentPatient!.id != null) {
+          .getPatientEncountersFromDatabase(patientUuid);
+      debugPrint('Loaded ${_encounters.length} encounters from database');
+    } catch (e) {
+      debugPrint('Error fetching from database, falling back to file: $e');
+      // Fallback to file-based encounters if database fails
+      final hasFileEncounters =
+          await _medicalRecordsService.hasEncountersInFile(patientUuid);
+
+      if (hasFileEncounters) {
+        debugPrint('Found encounters in file, fetching as fallback...');
         _encounters = await _medicalRecordsService
-            .getPatientEncounters(_currentPatient!.id!);
-        debugPrint('Loaded ${_encounters.length} encounters from database');
-      } else {
-        _encounters = [];
+            .getPatientEncountersFromFile(patientUuid);
         debugPrint(
-            'No encounters found - patient needs to be linked to encounters in JSON file');
+            'Loaded ${_encounters.length} encounters from file (fallback)');
+      } else {
+        debugPrint(
+            'No encounters found in database or file for patientUuid: $patientUuid');
+        // If patient exists in database, try getting encounters by patient ID
+        if (_currentPatient!.id != null) {
+          _encounters = await _medicalRecordsService
+              .getPatientEncounters(_currentPatient!.id!);
+          debugPrint(
+              'Loaded ${_encounters.length} encounters using patient ID');
+        } else {
+          _encounters = [];
+          debugPrint(
+              'No encounters found - patient may not have any encounter records yet');
+        }
       }
     }
 

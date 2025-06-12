@@ -1,14 +1,132 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
+import '../services/auth_service.dart';
 import '../models/encounter.dart';
 import '../models/patient.dart';
-import '../models/lab_result.dart';
-import '../models/medication.dart';
 
 class MedicalRecordsService {
   final ApiService _apiService;
+  final AuthService _authService;
 
-  MedicalRecordsService(this._apiService);
+  MedicalRecordsService(this._apiService, this._authService);
+
+  // NEW: Get comprehensive medical records by patient UUID (integrated with iCare)
+  Future<Map<String, dynamic>> getMedicalRecordsByPatientUuid(String patientUuid) async {
+    try {
+      final response = await _apiService.get('medical-records/patient/$patientUuid');
+      
+      if (response != null && response is Map<String, dynamic>) {
+        return response;
+      } else {
+        debugPrint('Unexpected response format for medical records: $response');
+        return {};
+      }
+    } catch (e) {
+      debugPrint('Error fetching medical records by UUID: $e');
+      throw Exception('Failed to fetch medical records: $e');
+    }
+  }
+
+  // NEW: Get encounters from database by patient UUID (real hospital data)
+  Future<Map<String, dynamic>> getEncountersByPatientUuid(String patientUuid) async {
+    try {
+      final response = await _apiService.get('encounters/db/patient/$patientUuid');
+      
+      if (response != null && response is Map<String, dynamic>) {
+        return response;
+      } else {
+        debugPrint('Unexpected response format for encounters: $response');
+        return {};
+      }
+    } catch (e) {
+      debugPrint('Error fetching encounters by patient UUID: $e');
+      throw Exception('Failed to fetch encounters: $e');
+    }
+  }
+
+  // NEW: Import encounters from iCare system for a patient
+  Future<Map<String, dynamic>> importICareEncounters(String patientUuid) async {
+    try {
+      final response = await _apiService.post('encounters/import/icare/patient/$patientUuid', {});
+      
+      if (response != null && response is Map<String, dynamic>) {
+        return response;
+      } else {
+        debugPrint('Unexpected response format for iCare import: $response');
+        return {};
+      }
+    } catch (e) {
+      debugPrint('Error importing iCare encounters: $e');
+      throw Exception('Failed to import iCare encounters: $e');
+    }
+  }
+  // ENHANCED: Get all encounters for the current authenticated user using real hospital data
+  Future<List<Encounter>> getCurrentUserEncounters() async {
+    try {
+      // Get the current user from auth service
+      final currentUser = _authService.currentUser;
+      if (currentUser?.patientUuid == null) {
+        throw Exception('No patient UUID found for current user. Please login again.');
+      }
+
+      debugPrint('Fetching encounters for current user with UUID: ${currentUser!.patientUuid}');
+      
+      // Use the new medical records endpoint that integrates with iCare
+      final response = await getMedicalRecordsByPatientUuid(currentUser.patientUuid!);
+      
+      if (response['encounters'] != null && response['encounters'] is List) {
+        final encounters = (response['encounters'] as List)
+            .map((encounterData) => _parseEncounter(encounterData))
+            .toList();
+        
+        debugPrint('Successfully loaded ${encounters.length} encounters for current user');
+        return encounters;
+      } else {
+        debugPrint('No encounters found in response for current user');
+        return [];
+      }
+    } catch (e) {
+      debugPrint('Error fetching current user encounters: $e');
+      throw Exception('Failed to fetch your medical records: $e');
+    }
+  }  // ENHANCED: Get encounter summary for current user  
+  Future<Map<String, dynamic>> getCurrentUserEncounterSummary() async {
+    try {
+      final currentUser = _authService.currentUser;
+      if (currentUser?.patientUuid == null) {
+        throw Exception('No patient UUID found for current user. Please login again.');
+      }
+
+      return await getEncountersByPatientUuid(currentUser!.patientUuid!);
+    } catch (e) {
+      debugPrint('Error fetching encounter summary: $e');
+      throw Exception('Failed to fetch encounter summary: $e');
+    }
+  }
+
+  // Helper method to parse encounter data from iCare integration
+  Encounter _parseEncounter(Map<String, dynamic> encounterData) {
+    return Encounter(
+      id: encounterData['id']?.toString(),
+      patientId: encounterData['patientId'] ?? 0,
+      encounterType: encounterData['encounterType'] ?? 'Unknown',
+      encounterDateTime: encounterData['encounterDateTime'] != null
+          ? DateTime.tryParse(encounterData['encounterDateTime']) ?? DateTime.now()
+          : DateTime.now(),
+      location: encounterData['location'] ?? 'Unknown Location',
+      provider: encounterData['provider'] ?? 'Unknown Provider',
+      notes: encounterData['notes'] ?? '',
+      diagnosis: encounterData['diagnosis'] ?? '',
+      status: encounterData['status'] ?? 'COMPLETED',
+      labResults: [],
+      medications: [],
+      diagnoses: [],
+      treatments: [],
+      vitalSigns: [],
+    );
+  }
+
+  // LEGACY METHODS FOR BACKWARD COMPATIBILITY
 
   // Get all encounters for a patient (original database method)
   Future<List<Encounter>> getPatientEncounters(int patientId) async {
@@ -177,67 +295,23 @@ class MedicalRecordsService {
       throw Exception('Failed to fetch patients: $e');
     }
   }
-  // Convert encounters to health records for backward compatibility
-  List<dynamic> convertEncountersToHealthRecords(List<Encounter> encounters) {
-    return encounters.map((encounter) {
-      return {
-        'id': encounter.id.toString(), // Convert any ID type to string
-        'title': _getEncounterTitle(encounter),
-        'date': encounter.encounterDateTime.toIso8601String(),
-        'provider': encounter.provider,
-        'type': encounter.encounterType,
-        'description': encounter.notes,
-        'diagnosis': encounter.diagnosis,
-        'status': encounter.status,
-        'location': encounter.location,
-        'attachments':
-            <String>[], // Will be populated when file attachments are implemented
-        // Enhanced medical data
-        'labResults': encounter.labResults,
-        'medications': encounter.medications,
-        'diagnoses': encounter.diagnoses,
-        'treatments': encounter.treatments,
-        'vitalSigns': encounter.vitalSigns,
-        'observations': encounter.observations,
-      };
-    }).toList();
-  }
 
-  // Helper method to generate a user-friendly title for encounters
-  String _getEncounterTitle(Encounter encounter) {
-    switch (encounter.encounterType.toUpperCase()) {
-      case 'REGISTRATION':
-        return 'Patient Registration';
-      case 'CONSULTATION':
-        return 'Medical Consultation';
-      case 'DISPENSING':
-        return 'Medication Dispensing';
-      case 'EMERGENCY':
-        return 'Emergency Department Visit';
-      case 'ADMISSION':
-        return 'Hospital Admission';
-      case 'LABORATORY':
-        return 'Laboratory Tests';
-      case 'RADIOLOGY':
-        return 'Radiology Exam';
-      case 'VACCINATION':
-        return 'Vaccination';
-      case 'DENTAL':
-        return 'Dental Checkup';
-      case 'PREVENTIVE':
-        return 'Preventive Care Visit';
-      case 'SPECIALIST':
-        return 'Specialist Consultation';
-      case 'URGENT_CARE':
-        return 'Urgent Care Visit';
-      default:
-        return encounter.encounterType
-            .replaceAll('_', ' ')
-            .toLowerCase()
-            .split(' ')
-            .map((word) =>
-                word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1))
-            .join(' ');
+  // NEW: Get encounters from database by patient UUID
+  Future<List<Encounter>> getPatientEncountersFromDatabase(String patientUuid) async {
+    try {
+      final response = await _apiService.get('encounters/db/patient/$patientUuid');
+
+      if (response != null && response is Map<String, dynamic>) {
+        if (response['encounters'] != null && response['encounters'] is List) {
+          return (response['encounters'] as List)
+              .map((encounterData) => _parseEncounter(encounterData))
+              .toList();
+        }
+      }
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching patient encounters from database: $e');
+      throw Exception('Failed to fetch patient encounters from database: $e');
     }
   }
 
@@ -249,7 +323,7 @@ class MedicalRecordsService {
       if (response != null && response['encounters'] is List) {
         final encountersData = response['encounters'] as List;
         return encountersData
-            .map((encounterData) => _mapJsonToEncounter(encounterData))
+            .map((encounterData) => _parseEncounter(encounterData))
             .toList();
       } else {
         debugPrint('No encounters found in file for patient UUID: $patientUuid');
@@ -265,7 +339,7 @@ class MedicalRecordsService {
   Future<bool> hasEncountersInFile(String patientUuid) async {
     try {
       final response = await _apiService.get('encounters/file/patient/$patientUuid/exists');
-      
+
       if (response != null && response['hasEncounters'] is bool) {
         return response['hasEncounters'] as bool;
       }
@@ -295,7 +369,7 @@ class MedicalRecordsService {
       if (response != null && response['encounters'] is List) {
         final encountersData = response['encounters'] as List;
         return encountersData
-            .map((encounterData) => _mapJsonToEncounter(encounterData))
+            .map((encounterData) => _parseEncounter(encounterData))
             .toList();
       } else {
         debugPrint('No encounters found in file');
@@ -305,120 +379,69 @@ class MedicalRecordsService {
       debugPrint('Error fetching all encounters from file: $e');
       throw Exception('Failed to fetch all encounters from file: $e');
     }
-  }  // Helper method to map JSON encounter data to Encounter object
-  Encounter _mapJsonToEncounter(Map<String, dynamic> encounterData) {
-    try {
-      return Encounter(
-        id: encounterData['encounterId'], // Keep as String UUID for file-based encounters
-        patientId: 0, // Will be filled from context
-        encounterType: encounterData['encounterType'] ?? '',
-        encounterDateTime: DateTime.parse(encounterData['encounterDateTime'] ?? DateTime.now().toIso8601String()),
-        location: encounterData['location'] ?? '',
-        provider: encounterData['provider'] ?? '',
-        notes: encounterData['notes'] ?? '',
-        diagnosis: encounterData['diagnosis'] ?? '',
-        chiefComplaint: encounterData['chiefComplaint'],
-        status: encounterData['status'] ?? 'COMPLETED',
-        observations: [],
-        vitalSigns: _parseVitalSigns(encounterData['vitalSigns']),
-        labResults: _parseLabResults(encounterData['labResults']),
-        medications: _parseMedications(encounterData['medications']),
-        diagnoses: [],
-        treatments: [],
-      );
-    } catch (e) {
-      debugPrint('Error mapping JSON to Encounter: $e');
-      // Return a default encounter if mapping fails
-      return Encounter(
-        id: encounterData['encounterId'] ?? 'unknown-${DateTime.now().millisecondsSinceEpoch}',
-        patientId: 0,
-        encounterType: 'UNKNOWN',
-        encounterDateTime: DateTime.now(),
-        location: 'Unknown',
-        provider: 'Unknown',
-        notes: 'Error loading encounter data',
-        diagnosis: '',
-        status: 'ERROR',
-        observations: [],
-        vitalSigns: [],
-        labResults: [],
-        medications: [],
-        diagnoses: [],
-        treatments: [],
-      );
-    }
   }
 
-  // Helper method to parse vital signs from JSON
-  List<VitalSign> _parseVitalSigns(dynamic vitalSignsData) {
-    if (vitalSignsData == null || vitalSignsData is! List) {
-      return [];
-    }    try {
-      return vitalSignsData.map<VitalSign>((vitalData) {
-        return VitalSign(
-          patientId: 0, // Will be set from context
-          type: vitalData['type'] ?? '',
-          value: vitalData['value']?.toString() ?? '',
-          recordedAt: DateTime.parse(vitalData['dateTime'] ?? DateTime.now().toIso8601String()),
-          notes: vitalData['unit'] != null ? 'Unit: ${vitalData['unit']}' : null,
-        );
-      }).toList();
-    } catch (e) {
-      debugPrint('Error parsing vital signs: $e');
-      return [];
-    }
+  // Convert encounters to health records for backward compatibility
+  List<dynamic> convertEncountersToHealthRecords(List<Encounter> encounters) {
+    return encounters.map((encounter) {
+      return {
+        'id': encounter.id.toString(),
+        'title': _getEncounterTitle(encounter),
+        'date': encounter.encounterDateTime.toIso8601String(),
+        'provider': encounter.provider,
+        'type': encounter.encounterType,
+        'description': encounter.notes,
+        'diagnosis': encounter.diagnosis,
+        'status': encounter.status,
+        'location': encounter.location,
+        'attachments': <String>[],
+        'labResults': encounter.labResults,
+        'medications': encounter.medications,
+        'diagnoses': encounter.diagnoses,
+        'treatments': encounter.treatments,
+        'vitalSigns': encounter.vitalSigns,
+        'observations': encounter.observations,
+      };
+    }).toList();
   }
 
-  // Helper method to parse lab results from JSON
-  List<LabResult> _parseLabResults(dynamic labResultsData) {
-    if (labResultsData == null || labResultsData is! List) {
-      return [];
-    }    try {
-      return labResultsData.map<LabResult>((labData) {
-        return LabResult(
-          encounterId: 0, // Will be set from context
-          testName: labData['testName'] ?? '',
-          testCode: labData['testCode'] ?? '',
-          value: labData['value']?.toString() ?? '',
-          normalRange: labData['referenceRange'] ?? '',
-          unit: labData['unit'] ?? '',
-          status: 'completed',
-          resultDateTime: DateTime.parse(labData['dateTime'] ?? DateTime.now().toIso8601String()),
-          laboratory: 'Laboratory Services',
-          technician: '',
-          notes: '',
-        );
-      }).toList();
-    } catch (e) {
-      debugPrint('Error parsing lab results: $e');
-      return [];
-    }
-  }
-
-  // Helper method to parse medications from JSON
-  List<Medication> _parseMedications(dynamic medicationsData) {
-    if (medicationsData == null || medicationsData is! List) {
-      return [];
-    }    try {
-      return medicationsData.map<Medication>((medData) {
-        return Medication(
-          encounterId: 0, // Will be set from context
-          medicationName: medData['name'] ?? '',
-          dosage: medData['dosage'] ?? '',
-          frequency: medData['frequency'] ?? '',
-          route: 'oral',
-          prescribedBy: 'Provider',
-          instructions: medData['duration'] ?? '',
-          indication: '',
-          status: 'active',
-          quantity: 30,
-          refills: 0,
-          notes: '',
-        );
-      }).toList();
-    } catch (e) {
-      debugPrint('Error parsing medications: $e');
-      return [];
+  // Helper method to generate a user-friendly title for encounters
+  String _getEncounterTitle(Encounter encounter) {
+    switch (encounter.encounterType.toUpperCase()) {
+      case 'REGISTRATION':
+        return 'Patient Registration';
+      case 'CONSULTATION':
+        return 'Medical Consultation';
+      case 'VISIT NOTE':
+        return 'Clinical Visit';
+      case 'DISPENSING':
+        return 'Medication Dispensing';
+      case 'EMERGENCY':
+        return 'Emergency Department Visit';
+      case 'ADMISSION':
+        return 'Hospital Admission';
+      case 'LABORATORY':
+        return 'Laboratory Tests';
+      case 'RADIOLOGY':
+        return 'Radiology Exam';
+      case 'VACCINATION':
+        return 'Vaccination';
+      case 'DENTAL':
+        return 'Dental Checkup';
+      case 'PREVENTIVE':
+        return 'Preventive Care Visit';
+      case 'SPECIALIST':
+        return 'Specialist Consultation';
+      case 'URGENT_CARE':
+        return 'Urgent Care Visit';
+      default:
+        return encounter.encounterType
+            .replaceAll('_', ' ')
+            .toLowerCase()
+            .split(' ')
+            .map((word) =>
+                word.isEmpty ? '' : word[0].toUpperCase() + word.substring(1))
+            .join(' ');
     }
   }
 }

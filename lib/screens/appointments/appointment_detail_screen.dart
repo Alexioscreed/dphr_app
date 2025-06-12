@@ -12,7 +12,8 @@ class AppointmentDetailScreen extends StatefulWidget {
   }) : super(key: key);
 
   @override
-  State<AppointmentDetailScreen> createState() => _AppointmentDetailScreenState();
+  State<AppointmentDetailScreen> createState() =>
+      _AppointmentDetailScreenState();
 }
 
 class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
@@ -22,7 +23,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
   Widget build(BuildContext context) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final appointmentProvider = Provider.of<AppointmentProvider>(context);
-    final appointment = appointmentProvider.getAppointmentById(widget.appointmentId);
+    final appointment =
+        appointmentProvider.getAppointmentById(widget.appointmentId);
 
     if (appointment == null) {
       return Scaffold(
@@ -91,7 +93,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
                     ),
                     const SizedBox(height: 4),
                     Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 8, vertical: 4),
                       decoration: BoxDecoration(
                         color: _getStatusColor(appointment.status),
                         borderRadius: BorderRadius.circular(4),
@@ -247,13 +250,13 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: [
-                const Icon(
+              children: const [
+                Icon(
                   Icons.location_on,
                   color: Color(0xFF2196F3),
                   size: 28,
                 ),
-                const SizedBox(width: 16),
+                SizedBox(width: 16),
                 const Text(
                   'Location',
                   style: TextStyle(
@@ -311,14 +314,14 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Row(
-              children: [
-                const Icon(
+              children: const [
+                Icon(
                   Icons.note,
                   color: Color(0xFF2196F3),
                   size: 28,
                 ),
-                const SizedBox(width: 16),
-                const Text(
+                SizedBox(width: 16),
+                Text(
                   'Notes',
                   style: TextStyle(
                     fontSize: 18,
@@ -331,7 +334,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
             const Divider(),
             const SizedBox(height: 16),
             Text(
-              appointment.notes.isEmpty ? 'No notes available' : appointment.notes,
+              appointment.notes.isEmpty
+                  ? 'No notes available'
+                  : appointment.notes,
               style: TextStyle(
                 color: appointment.notes.isEmpty ? Colors.grey : null,
               ),
@@ -384,15 +389,16 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         SizedBox(
           width: double.infinity,
           child: OutlinedButton.icon(
-            onPressed: _isLoading ? null : () => _cancelAppointment(appointment.id),
+            onPressed:
+                _isLoading ? null : () => _cancelAppointment(appointment.id),
             icon: _isLoading
                 ? const SizedBox(
-              height: 16,
-              width: 16,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-              ),
-            )
+                    height: 16,
+                    width: 16,
+                    child: CircularProgressIndicator(
+                      strokeWidth: 2,
+                    ),
+                  )
                 : const Icon(Icons.cancel),
             label: Text(_isLoading ? 'Cancelling...' : 'Cancel Appointment'),
             style: OutlinedButton.styleFrom(
@@ -412,7 +418,8 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
     });
 
     try {
-      final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
+      final appointmentProvider =
+          Provider.of<AppointmentProvider>(context, listen: false);
       final success = await appointmentProvider.cancelAppointment(id);
 
       setState(() {
@@ -427,7 +434,9 @@ class _AppointmentDetailScreenState extends State<AppointmentDetailScreen> {
         );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to cancel appointment: ${appointmentProvider.error}')),
+          SnackBar(
+              content: Text(
+                  'Failed to cancel appointment: ${appointmentProvider.error}')),
         );
       }
     } catch (e) {

@@ -1,25 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../services/medical_records_service.dart';
 import '../../services/api_service.dart';
 import '../../services/auth_service.dart';
 
-class TestingAdminScreen extends StatefulWidget {
-  const TestingAdminScreen({Key? key}) : super(key: key);
+class MedicalRecordsTestScreen extends StatefulWidget {
+  const MedicalRecordsTestScreen({Key? key}) : super(key: key);
 
   @override
-  State<TestingAdminScreen> createState() => _TestingAdminScreenState();
+  State<MedicalRecordsTestScreen> createState() =>
+      _MedicalRecordsTestScreenState();
 }
 
-class _TestingAdminScreenState extends State<TestingAdminScreen> {
+class _MedicalRecordsTestScreenState extends State<MedicalRecordsTestScreen> {
   late MedicalRecordsService _medicalRecordsService;
   List<Map<String, dynamic>> _allEncounters = [];
   Map<String, dynamic>? _encounterSummary;
   String _testPatientUuid = '';
   bool _isLoading = false;
   String _statusMessage = '';
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -37,7 +38,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Testing Admin'),
+        title: const Text('Medical Records Test'),
         backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
@@ -46,28 +47,17 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Current User Info
             _buildCurrentUserCard(currentUser),
-            const SizedBox(height: 20),
-
-            // Test Controls
+            const SizedBox(height: 16),
             _buildTestControlsCard(),
-            const SizedBox(height: 20),
-
-            // Status Message
-            if (_statusMessage.isNotEmpty) ...[
-              _buildStatusCard(),
-              const SizedBox(height: 20),
-            ],
-
-            // Encounter Summary
+            const SizedBox(height: 16),
+            if (_statusMessage.isNotEmpty) _buildStatusCard(),
             if (_encounterSummary != null) ...[
+              const SizedBox(height: 16),
               _buildEncounterSummaryCard(),
-              const SizedBox(height: 20),
             ],
-
-            // All Encounters List
             if (_allEncounters.isNotEmpty) ...[
+              const SizedBox(height: 16),
               _buildAllEncountersCard(),
             ],
           ],
@@ -85,7 +75,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Current User Information',
+              'Current User',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -93,28 +83,21 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
             ),
             const SizedBox(height: 12),
             if (currentUser != null) ...[
-              _buildInfoRow('Name', currentUser.name),
-              _buildInfoRow('Email', currentUser.email),
-              _buildInfoRow(
-                  'Patient UUID', currentUser.patientUuid ?? 'Not Set'),
-              _buildInfoRow('MRN', currentUser.mrn ?? 'Not Set'),
-              const SizedBox(height: 10),
+              Text('Name: ${currentUser.name}'),
+              Text('Email: ${currentUser.email}'),
+              Text('Patient UUID: ${currentUser.patientUuid ?? "Not set"}'),
+              const SizedBox(height: 12),
               Row(
                 children: [
                   ElevatedButton.icon(
                     onPressed: () {
                       if (currentUser.patientUuid != null) {
-                        Clipboard.setData(
-                            ClipboardData(text: currentUser.patientUuid!));
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          const SnackBar(
-                              content:
-                                  Text('Patient UUID copied to clipboard')),
-                        );
+                        setState(
+                            () => _testPatientUuid = currentUser.patientUuid!);
                       }
                     },
                     icon: const Icon(Icons.copy),
-                    label: const Text('Copy UUID'),
+                    label: const Text('Use UUID'),
                   ),
                   const SizedBox(width: 10),
                   ElevatedButton.icon(
@@ -157,6 +140,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
                 border: OutlineInputBorder(),
               ),
               onChanged: (value) => _testPatientUuid = value,
+              controller: TextEditingController(text: _testPatientUuid),
             ),
             const SizedBox(height: 12),
             Wrap(
@@ -183,7 +167,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
             ),
             if (_isLoading) ...[
               const SizedBox(height: 12),
-              const Center(child: CircularProgressIndicator()),
+              const LinearProgressIndicator(),
             ],
           ],
         ),
@@ -194,36 +178,33 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
   Widget _buildStatusCard() {
     return Card(
       elevation: 2,
-      color: _statusMessage.contains('Error')
-          ? Colors.red.shade100
-          : Colors.green.shade100,
+      color: _statusMessage.startsWith('Error')
+          ? Colors.red.withOpacity(0.1)
+          : Colors.green.withOpacity(0.1),
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(
-                  _statusMessage.contains('Error')
-                      ? Icons.error
-                      : Icons.check_circle,
-                  color: _statusMessage.contains('Error')
-                      ? Colors.red
-                      : Colors.green,
-                ),
-                const SizedBox(width: 8),
-                const Text(
-                  'Status',
-                  style: TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-              ],
+            Text(
+              'Status',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: _statusMessage.startsWith('Error')
+                    ? Colors.red
+                    : Colors.green,
+              ),
             ),
             const SizedBox(height: 8),
-            Text(_statusMessage),
+            Text(
+              _statusMessage,
+              style: TextStyle(
+                color: _statusMessage.startsWith('Error')
+                    ? Colors.red
+                    : Colors.green,
+              ),
+            ),
           ],
         ),
       ),
@@ -250,21 +231,22 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
             _buildInfoRow('Total Encounters',
                 _encounterSummary!['totalEncounters'].toString()),
             if (_encounterSummary!['hasEncounters'] == true) ...[
-              _buildInfoRow(
-                  'Latest Encounter', _encounterSummary!['latestEncounter']),
+              _buildInfoRow('Latest Encounter',
+                  _encounterSummary!['latestEncounter'] ?? 'N/A'),
               _buildInfoRow('Earliest Encounter',
-                  _encounterSummary!['earliestEncounter']),
+                  _encounterSummary!['earliestEncounter'] ?? 'N/A'),
               const SizedBox(height: 8),
               const Text('Encounters by Type:',
                   style: TextStyle(fontWeight: FontWeight.w500)),
               const SizedBox(height: 4),
-              ...(_encounterSummary!['encountersByType']
-                      as Map<String, dynamic>)
-                  .entries
-                  .map((entry) => Padding(
-                        padding: const EdgeInsets.only(left: 16.0),
-                        child: Text('• ${entry.key}: ${entry.value}'),
-                      )),
+              if (_encounterSummary!['encountersByType'] != null)
+                ...(_encounterSummary!['encountersByType']
+                        as Map<String, dynamic>)
+                    .entries
+                    .map((entry) => Padding(
+                          padding: const EdgeInsets.only(left: 16, bottom: 2),
+                          child: Text('${entry.key}: ${entry.value}'),
+                        )),
             ],
           ],
         ),
@@ -281,7 +263,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'All Encounters in File (${_allEncounters.length})',
+              'All Encounters (${_allEncounters.length})',
               style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -294,15 +276,13 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
               itemCount: _allEncounters.length,
               itemBuilder: (context, index) {
                 final encounter = _allEncounters[index];
-                return Card(
-                  margin: const EdgeInsets.symmetric(vertical: 4),
-                  child: ListTile(
-                    title: Text(
-                        '${encounter['encounterType']} - ${encounter['patientUuid']}'),
-                    subtitle: Text(
-                        '${encounter['location']} - ${encounter['encounterDateTime']}'),
-                    trailing: Text('ID: ${encounter['encounterId']}'),
-                  ),
+                return ListTile(
+                  dense: true,
+                  title: Text(
+                      '${encounter['encounterType']} - ${encounter['patientUuid']}'),
+                  subtitle: Text(
+                      '${encounter['location']} - ${encounter['encounterDateTime']}'),
+                  trailing: Text('ID: ${encounter['encounterId']}'),
                 );
               },
             ),
@@ -359,19 +339,19 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
     });
 
     try {
-      // Check if encounters exist
-      final hasEncounters =
-          await _medicalRecordsService.hasEncountersInFile(patientUuid);
-
-      // Get summary
-      final summary = await _medicalRecordsService
-          .getPatientEncountersSummaryFromFile(patientUuid);
+      // Try to get medical records for the patient
+      final medicalRecords = await _medicalRecordsService
+          .getMedicalRecordsByPatientUuid(patientUuid);
 
       setState(() {
-        _encounterSummary = summary;
-        _statusMessage = hasEncounters
-            ? 'Success: Found ${summary?['totalEncounters'] ?? 0} encounters for UUID: $patientUuid'
-            : 'Info: No encounters found for UUID: $patientUuid';
+        _encounterSummary = {
+          'patientUuid': patientUuid,
+          'totalEncounters': medicalRecords['encounters']?.length ?? 0,
+          'hasEncounters': (medicalRecords['encounters']?.length ?? 0) > 0,
+          'patient': medicalRecords['patient'],
+        };
+        _statusMessage =
+            'Success: Found ${_encounterSummary!['totalEncounters']} encounters for UUID: $patientUuid';
       });
     } catch (e) {
       setState(() {
@@ -392,7 +372,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
 
     try {
       final encounters =
-          await _medicalRecordsService.getAllEncountersFromFile();
+          await _medicalRecordsService.getCurrentUserEncounters();
 
       setState(() {
         _allEncounters = encounters
@@ -405,8 +385,7 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
                   'location': e.location,
                 })
             .toList();
-        _statusMessage =
-            'Success: Loaded ${encounters.length} encounters from file';
+        _statusMessage = 'Success: Loaded ${encounters.length} encounters';
       });
     } catch (e) {
       setState(() {
@@ -436,10 +415,15 @@ class _TestingAdminScreenState extends State<TestingAdminScreen> {
     try {
       StringBuffer results = StringBuffer();
       for (String uuid in placeholders) {
-        final hasEncounters =
-            await _medicalRecordsService.hasEncountersInFile(uuid);
-        results.writeln(
-            '$uuid: ${hasEncounters ? "HAS ENCOUNTERS" : "NO ENCOUNTERS"}');
+        try {
+          final medicalRecords =
+              await _medicalRecordsService.getMedicalRecordsByPatientUuid(uuid);
+          final hasEncounters = (medicalRecords['encounters']?.length ?? 0) > 0;
+          results.writeln(
+              '$uuid: ${hasEncounters ? "HAS ENCOUNTERS" : "NO ENCOUNTERS"}');
+        } catch (e) {
+          results.writeln('$uuid: ERROR - $e');
+        }
       }
 
       setState(() {

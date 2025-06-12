@@ -4,6 +4,7 @@ import '../health_records/health_records_screen.dart';
 import '../progress/health_progress_screen.dart';
 import '../settings/settings_screen.dart';
 import '../shared_records/shared_records_screen.dart';
+import '../testing/medical_records_test_screen.dart';
 import '../../widgets/notification_badge.dart';
 import '../appointments/appointments_screen.dart';
 import '../appointments/book_appointment_screen.dart';
@@ -62,8 +63,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             onTap: () {
               // Navigate to notifications
             },
-          ),
-          IconButton(
+          ),          IconButton(
             icon: const Icon(Icons.cloud_download),
             onPressed: () {
               Navigator.of(context).push(
@@ -71,6 +71,15 @@ class _DashboardScreenState extends State<DashboardScreen> {
               );
             },
             tooltip: 'Shared Records',
+          ),
+          IconButton(
+            icon: const Icon(Icons.bug_report),
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const MedicalRecordsTestScreen()),
+              );
+            },
+            tooltip: 'Medical Records Test',
           ),
           IconButton(
             icon: const Icon(Icons.settings),

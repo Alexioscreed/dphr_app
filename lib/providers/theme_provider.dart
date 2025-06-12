@@ -32,9 +32,9 @@ class ThemeProvider with ChangeNotifier {
     return ThemeData(
       brightness: Brightness.light,
       primaryColor: const Color(0xFF2196F3), // Updated to blue
-      colorScheme: ColorScheme.light(
-        primary: const Color(0xFF2196F3), // Updated to blue
-        secondary: const Color(0xFF1976D2), // Darker blue
+      colorScheme: const ColorScheme.light(
+        primary: Color(0xFF2196F3), // Updated to blue
+        secondary: Color(0xFF1976D2), // Darker blue
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Colors.white,
@@ -60,7 +60,8 @@ class ThemeProvider with ChangeNotifier {
       ),
       inputDecorationTheme: InputDecorationTheme(
         focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Color(0xFF2196F3)), // Updated to blue
+          borderSide:
+              const BorderSide(color: Color(0xFF2196F3)), // Updated to blue
           borderRadius: BorderRadius.circular(8),
         ),
         border: OutlineInputBorder(
@@ -82,10 +83,10 @@ class ThemeProvider with ChangeNotifier {
     return ThemeData(
       brightness: Brightness.dark,
       primaryColor: const Color(0xFF2196F3), // Updated to blue
-      colorScheme: ColorScheme.dark(
-        primary: const Color(0xFF2196F3), // Updated to blue
-        secondary: const Color(0xFF64B5F6), // Lighter blue for dark mode
-        surface: const Color(0xFF1E1E1E),
+      colorScheme: const ColorScheme.dark(
+        primary: Color(0xFF2196F3), // Updated to blue
+        secondary: Color(0xFF64B5F6), // Lighter blue for dark mode
+        surface: Color(0xFF1E1E1E),
       ),
       appBarTheme: const AppBarTheme(
         backgroundColor: Color(0xFF1E1E1E),
@@ -100,18 +101,22 @@ class ThemeProvider with ChangeNotifier {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          foregroundColor: const Color(0xFF64B5F6), // Lighter blue for dark mode
+          foregroundColor:
+              const Color(0xFF64B5F6), // Lighter blue for dark mode
         ),
       ),
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
-          foregroundColor: const Color(0xFF64B5F6), // Lighter blue for dark mode
-          side: const BorderSide(color: Color(0xFF64B5F6)), // Lighter blue for dark mode
+          foregroundColor:
+              const Color(0xFF64B5F6), // Lighter blue for dark mode
+          side: const BorderSide(
+              color: Color(0xFF64B5F6)), // Lighter blue for dark mode
         ),
       ),
       inputDecorationTheme: InputDecorationTheme(
         focusedBorder: OutlineInputBorder(
-          borderSide: const BorderSide(color: Color(0xFF64B5F6)), // Lighter blue for dark mode
+          borderSide: const BorderSide(
+              color: Color(0xFF64B5F6)), // Lighter blue for dark mode
           borderRadius: BorderRadius.circular(8),
         ),
         border: OutlineInputBorder(
