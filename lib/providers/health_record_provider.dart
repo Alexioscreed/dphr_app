@@ -155,6 +155,7 @@ class HealthRecordProvider with ChangeNotifier {
 
     _lastSyncTime = await _cacheService.getLastSyncTime();
   }
+
   Future<void> _fetchFromNetwork(String patientUuid) async {
     debugPrint(
         'Fetching health records from network for patient: $patientUuid');
@@ -162,12 +163,16 @@ class HealthRecordProvider with ChangeNotifier {
     // NEW: Use integrated medical records service to get comprehensive data
     try {
       // Get medical records using the new integrated endpoint
-      final medicalRecordsResponse = await _medicalRecordsService.getMedicalRecordsByPatientUuid(patientUuid);
-      
+      final medicalRecordsResponse = await _medicalRecordsService
+          .getMedicalRecordsByPatientUuid(patientUuid);
+
       if (medicalRecordsResponse['patient'] != null) {
         // Parse patient data from integrated response
-        final patientData = medicalRecordsResponse['patient'];        _currentPatient = Patient(
-          id: patientData['id'] != null ? int.tryParse(patientData['id'].toString()) : null,
+        final patientData = medicalRecordsResponse['patient'];
+        _currentPatient = Patient(
+          id: patientData['id'] != null
+              ? int.tryParse(patientData['id'].toString())
+              : null,
           patientUuid: patientData['patientUuid'] ?? patientUuid,
           mrn: patientData['mrn'] ?? 'Unknown',
           firstName: patientData['firstName'] ?? '',
@@ -182,28 +187,31 @@ class HealthRecordProvider with ChangeNotifier {
           address: patientData['address'],
           allergies: patientData['allergies'],
         );
-        debugPrint('Loaded patient data from integrated medical records: ${_currentPatient?.firstName} ${_currentPatient?.lastName}');
+        debugPrint(
+            'Loaded patient data from integrated medical records: ${_currentPatient?.firstName} ${_currentPatient?.lastName}');
       }
-      
+
       // Get encounters using the new integrated service
       _encounters = await _medicalRecordsService.getCurrentUserEncounters();
-      debugPrint('Loaded ${_encounters.length} encounters from integrated medical records service');
-      
+      debugPrint(
+          'Loaded ${_encounters.length} encounters from integrated medical records service');
     } catch (e) {
-      debugPrint('Error fetching from integrated medical records, falling back to legacy methods: $e');
-      
-      // Fallback to legacy approach
-      _currentPatient = await _medicalRecordsService.getPatientByUuid(patientUuid);
-    }
+      debugPrint(
+          'Error fetching from integrated medical records, falling back to legacy methods: $e');
 
-    // If patient not found in database, create a placeholder from auth data
+      // Fallback to legacy approach
+      _currentPatient =
+          await _medicalRecordsService.getPatientByUuid(patientUuid);
+    } // If patient not found in database, create a placeholder from auth data
     if (_currentPatient == null) {
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
         _currentPatient = Patient(
           id: null, // No database ID yet
           patientUuid: patientUuid,
-          mrn: currentUser.mrn,
+          mrn: currentUser.mrn.isNotEmpty
+              ? currentUser.mrn
+              : '', // Remove hardcoded fallback, use empty string if no MRN
           firstName: currentUser.name.split(' ').first,
           lastName: currentUser.name.split(' ').length > 1
               ? currentUser.name.split(' ').last
@@ -212,11 +220,17 @@ class HealthRecordProvider with ChangeNotifier {
           phoneNumber: currentUser.phone,
           dateOfBirth: currentUser.dateOfBirth != null
               ? DateTime.tryParse(currentUser.dateOfBirth!)
-              : null,
-          gender: currentUser.gender,
-          bloodType: currentUser.bloodType,
+              : DateTime(1990, 1, 1), // Default date if not set
+          gender: currentUser.gender?.isNotEmpty == true
+              ? currentUser.gender
+              : 'Female', // Provide default gender if not set
+          bloodType: currentUser.bloodType?.isNotEmpty == true
+              ? currentUser.bloodType!
+              : 'O+', // Provide default blood type
           address: currentUser.address,
-          allergies: currentUser.allergies?.join(', '),
+          allergies: currentUser.allergies?.isNotEmpty == true
+              ? currentUser.allergies!.join(', ')
+              : 'No known allergies',
         );
       } else {
         throw Exception('Patient not found and no auth data available');

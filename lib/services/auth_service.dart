@@ -138,14 +138,14 @@ class AuthService {
 
           // Save token to SharedPreferences
           final prefs = await SharedPreferences.getInstance();
-          await prefs.setString(tokenKey, _token!);
-
-          // Create a basic user object with the response data
+          await prefs.setString(tokenKey,
+              _token!); // Create a basic user object with the response data
           _currentUser = User(
             id: data['id']?.toString() ?? '1',
             name: data['name'] ?? 'User',
             email: email,
-            mrn: data['mrn'] ?? 'MRN123',
+            mrn: data['mrn'] ??
+                '', // Use actual MRN from backend instead of hardcoded fallback
             patientUuid:
                 data['patientUuid'], // Store the patient UUID from backend
           );
