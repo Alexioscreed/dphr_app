@@ -1,9 +1,9 @@
 class AppConfig {
   // Server configuration
   // Change this to your computer's IP address when testing on physical devices
-  static const String serverIP = '192.168.0.10';
+  static const String serverIP = '192.168.0.42';
   static const int serverPort =
-      8081; // Changed from 8080 to 8081 to avoid conflict with icare system
+      8081;
 
   // API URLs
   static String get baseApiUrl => 'http://$serverIP:$serverPort/api';

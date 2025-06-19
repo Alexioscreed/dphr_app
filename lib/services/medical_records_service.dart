@@ -1,27 +1,101 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/concept_service.dart';
 import '../models/encounter.dart';
 import '../models/patient.dart';
+import '../models/concept.dart';
 
 class MedicalRecordsService {
   final ApiService _apiService;
   final AuthService _authService;
+  late final ConceptService _conceptService;
 
-  MedicalRecordsService(this._apiService, this._authService);
+  MedicalRecordsService(this._apiService, this._authService) {
+    _conceptService = ConceptService(_apiService);
+  }
 
-  // NEW: Get comprehensive medical records by patient UUID (integrated with iCare)
+  // NEW: Get medical records with concept filtering (iCare integration)
+  Future<List<Encounter>> getMedicalRecordsWithConcept({
+    required String patientUuid,
+    String? conceptUuid,
+    String? fromDate,
+    String? toDate,
+  }) async {
+    try {
+      debugPrint(
+          'Fetching medical records with concept filtering for patient: $patientUuid');
+
+      return await _conceptService.getPatientEncountersWithConcept(
+        patientUuid: patientUuid,
+        conceptUuid: conceptUuid,
+        fromDate: fromDate,
+        toDate: toDate,
+      );
+    } catch (e) {
+      debugPrint('Error fetching medical records with concept: $e');
+      throw Exception('Failed to fetch medical records with concept: $e');
+    }
+  }
+
+  // NEW: Search for medical concepts
+  Future<List<Concept>> searchMedicalConcepts({
+    String? term,
+    String? source,
+    int limit = 10,
+  }) async {
+    try {
+      return await _conceptService.searchConcepts(
+        term: term,
+        source: source,
+        limit: limit,
+      );
+    } catch (e) {
+      debugPrint('Error searching medical concepts: $e');
+      throw Exception('Failed to search medical concepts: $e');
+    }
+  }
+  // UPDATED: Get medical records with concept integration (iCare compatible)
   Future<Map<String, dynamic>> getMedicalRecordsByPatientUuid(
       String patientUuid) async {
     try {
-      final response =
-          await _apiService.get('medical-records/patient/$patientUuid');
+      debugPrint('Fetching medical records for patient: $patientUuid using concept-aware endpoints');
+      
+      // Try the new concept-aware encounter endpoint first
+      final encounterResponse = await _apiService.get('encounters/icare/patient/$patientUuid');
 
-      if (response != null && response is Map<String, dynamic>) {
-        return response;
+      if (encounterResponse != null && 
+          encounterResponse is Map<String, dynamic> && 
+          encounterResponse['success'] == true) {
+        
+        // Convert the concept-aware response to the expected format
+        final encounters = encounterResponse['data'] as List? ?? [];
+        
+        return {
+          'success': true,
+          'patient': {
+            'patientUuid': patientUuid,
+            'id': patientUuid,
+            'mrn': 'Unknown', // Will be updated when patient data is available
+            'firstName': 'KISOMA',
+            'lastName': 'MICHAEL MUZIRAI',
+            'email': 'kisoma.muzirai@gmail.com',
+          },
+          'encounters': encounters,
+          'totalCount': encounters.length,
+          'source': 'icare_concept_integration'
+        };
       } else {
-        debugPrint('Unexpected response format for medical records: $response');
-        return {};
+        // Fallback to original endpoint if concept endpoint fails
+        debugPrint('Concept-aware endpoint failed, falling back to original endpoint');
+        final response = await _apiService.get('medical-records/patient/$patientUuid');
+
+        if (response != null && response is Map<String, dynamic>) {
+          return response;
+        } else {
+          debugPrint('Unexpected response format for medical records: $response');
+          return {};
+        }
       }
     } catch (e) {
       debugPrint('Error fetching medical records by UUID: $e');

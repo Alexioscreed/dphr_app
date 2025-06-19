@@ -2,9 +2,8 @@
     <application
         android:label="dphr_app"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
-        <activity
-            android:name=".MainActivity"
+        android:icon="@mipmap/ic_launcher">        <activity
+            android:name="com.example.dphr_app.MainActivity"
             android:exported="true"
             android:launchMode="singleTop"
             android:taskAffinity=""

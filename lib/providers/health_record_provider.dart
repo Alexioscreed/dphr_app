@@ -160,6 +160,9 @@ class HealthRecordProvider with ChangeNotifier {
     debugPrint(
         'Fetching health records from network for patient: $patientUuid');
 
+    // Initialize tracking variables
+    bool encountersSuccessfullyFetched = false;
+
     // NEW: Use integrated medical records service to get comprehensive data
     try {
       // Get medical records using the new integrated endpoint
@@ -192,17 +195,85 @@ class HealthRecordProvider with ChangeNotifier {
       }
 
       // Get encounters using the new integrated service
-      _encounters = await _medicalRecordsService.getCurrentUserEncounters();
-      debugPrint(
-          'Loaded ${_encounters.length} encounters from integrated medical records service');
+      List<Encounter> integratedEncounters = [];
+
+      try {
+        integratedEncounters =
+            await _medicalRecordsService.getCurrentUserEncounters();
+        _encounters = integratedEncounters;
+        debugPrint(
+            'Successfully loaded ${integratedEncounters.length} encounters from integrated medical records service');
+        debugPrint(
+            'Using encounters from integrated service, skipping legacy methods');
+
+        // If we successfully got encounters, skip the fallback logic entirely
+        encountersSuccessfullyFetched = true;
+      } catch (encounterError) {
+        debugPrint(
+            'Failed to fetch encounters from integrated service: $encounterError');
+        encountersSuccessfullyFetched = false;
+      }
     } catch (e) {
       debugPrint(
           'Error fetching from integrated medical records, falling back to legacy methods: $e');
+      encountersSuccessfullyFetched = false;
+    }
 
-      // Fallback to legacy approach
-      _currentPatient =
-          await _medicalRecordsService.getPatientByUuid(patientUuid);
-    } // If patient not found in database, create a placeholder from auth data
+    // Only use legacy methods if integrated service completely failed or encounters fetch failed
+    if (!encountersSuccessfullyFetched) {
+      debugPrint(
+          'Falling back to legacy methods for both patient and encounters');
+
+      try {
+        // Fallback to legacy approach for patient
+        _currentPatient =
+            await _medicalRecordsService.getPatientByUuid(patientUuid);
+
+        // Only try legacy encounter methods if integrated service failed
+        debugPrint(
+            'Fetching encounters from database for patientUuid: $patientUuid');
+        try {
+          _encounters = await _medicalRecordsService
+              .getPatientEncountersFromDatabase(patientUuid);
+          debugPrint('Loaded ${_encounters.length} encounters from database');
+        } catch (dbError) {
+          debugPrint(
+              'Error fetching from database, falling back to file: $dbError');
+          // Fallback to file-based encounters if database fails
+          final hasFileEncounters =
+              await _medicalRecordsService.hasEncountersInFile(patientUuid);
+
+          if (hasFileEncounters) {
+            debugPrint('Found encounters in file, fetching as fallback...');
+            _encounters = await _medicalRecordsService
+                .getPatientEncountersFromFile(patientUuid);
+            debugPrint(
+                'Loaded ${_encounters.length} encounters from file (fallback)');
+          } else {
+            debugPrint(
+                'No encounters found in database or file for patientUuid: $patientUuid');
+            // If patient exists in database, try getting encounters by patient ID
+            if (_currentPatient != null && _currentPatient!.id != null) {
+              _encounters = await _medicalRecordsService
+                  .getPatientEncounters(_currentPatient!.id!);
+              debugPrint(
+                  'Loaded ${_encounters.length} encounters using patient ID');
+            } else {
+              _encounters = [];
+              debugPrint(
+                  'No encounters found - patient may not have any encounter records yet');
+            }
+          }
+        }
+      } catch (legacyError) {
+        debugPrint('Legacy fallback also failed: $legacyError');
+        if (_encounters.isEmpty) {
+          _encounters = [];
+        }
+      }
+    }
+
+    // If patient not found in database, create a placeholder from auth data
     if (_currentPatient == null) {
       final currentUser = _authService.currentUser;
       if (currentUser != null) {
@@ -239,43 +310,7 @@ class HealthRecordProvider with ChangeNotifier {
 
     // Cache patient data
     await _cacheService.cacheData(
-        'patient_$patientUuid',
-        _currentPatient!
-            .toJson()); // Get encounters from database using patientUuid (UPDATED approach)
-    debugPrint(
-        'Fetching encounters from database for patientUuid: $patientUuid');
-    try {
-      _encounters = await _medicalRecordsService
-          .getPatientEncountersFromDatabase(patientUuid);
-      debugPrint('Loaded ${_encounters.length} encounters from database');
-    } catch (e) {
-      debugPrint('Error fetching from database, falling back to file: $e');
-      // Fallback to file-based encounters if database fails
-      final hasFileEncounters =
-          await _medicalRecordsService.hasEncountersInFile(patientUuid);
-
-      if (hasFileEncounters) {
-        debugPrint('Found encounters in file, fetching as fallback...');
-        _encounters = await _medicalRecordsService
-            .getPatientEncountersFromFile(patientUuid);
-        debugPrint(
-            'Loaded ${_encounters.length} encounters from file (fallback)');
-      } else {
-        debugPrint(
-            'No encounters found in database or file for patientUuid: $patientUuid');
-        // If patient exists in database, try getting encounters by patient ID
-        if (_currentPatient!.id != null) {
-          _encounters = await _medicalRecordsService
-              .getPatientEncounters(_currentPatient!.id!);
-          debugPrint(
-              'Loaded ${_encounters.length} encounters using patient ID');
-        } else {
-          _encounters = [];
-          debugPrint(
-              'No encounters found - patient may not have any encounter records yet');
-        }
-      }
-    }
+        'patient_$patientUuid', _currentPatient!.toJson());
 
     // Convert encounters to health records for backward compatibility
     final healthRecordData =
