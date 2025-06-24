@@ -1,4 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
+import '../../models/symptom.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/vital_measurements_provider.dart';
+import '../../services/api_service.dart';
 
 class LogSymptomsScreen extends StatefulWidget {
   const LogSymptomsScreen({Key? key}) : super(key: key);
@@ -12,9 +17,9 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
   final _symptomsController = TextEditingController();
   final _severityController = TextEditingController();
   final _notesController = TextEditingController();
-
   bool _isLoading = false;
   bool _showConfirmation = false;
+  Symptom? _savedSymptom;
 
   @override
   void dispose() {
@@ -31,10 +36,22 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
       });
 
       try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 1));
+        // Create symptom object
+        final symptom = Symptom(
+          name: _symptomsController.text,
+          severity: int.parse(_severityController.text),
+          date: DateTime.now(),
+          notes: _notesController.text,
+        ); // Save to backend
+        await _saveSymptomToBackend(symptom);
+
+        // Add to provider for health analysis
+        final vitalProvider =
+            Provider.of<VitalMeasurementsProvider>(context, listen: false);
+        await vitalProvider.addSymptom(symptom, context);
 
         setState(() {
+          _savedSymptom = symptom;
           _showConfirmation = true;
           _isLoading = false;
         });
@@ -52,12 +69,44 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
     }
   }
 
+  Future<void> _saveSymptomToBackend(Symptom symptom) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final apiService = Provider.of<ApiService>(context, listen: false);
+
+      if (authProvider.currentUser?.patientUuid == null) {
+        throw Exception('User not authenticated');
+      }
+      final symptomData = {
+        'name': symptom.name,
+        'severity': symptom.severity,
+        'recordedAt': symptom.date.toIso8601String(),
+        'notes': symptom.notes,
+      };
+
+      final response = await apiService.post(
+        'symptoms/patient-uuid/${authProvider.currentUser!.patientUuid}',
+        symptomData,
+      );
+
+      if (response['error'] != null) {
+        throw Exception(response['error']);
+      }
+
+      debugPrint('Symptom saved successfully: ${response.toString()}');
+    } catch (e) {
+      debugPrint('Error saving symptom to backend: $e');
+      throw e; // Re-throw to show user feedback
+    }
+  }
+
   void _resetForm() {
     setState(() {
       _symptomsController.clear();
       _severityController.clear();
       _notesController.clear();
       _showConfirmation = false;
+      _savedSymptom = null;
     });
   }
 
@@ -76,10 +125,7 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          if (_showConfirmation)
-            _buildConfirmation()
-          else
-            _buildSymptomsForm(),
+          if (_showConfirmation) _buildConfirmation() else _buildSymptomsForm(),
         ],
       ),
     );
@@ -159,13 +205,13 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
               ),
               child: _isLoading
                   ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Text('Log Symptom'),
             ),
           ),
@@ -219,14 +265,6 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
-        const Text(
-          'Recommendation',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         const SizedBox(height: 16),
         Card(
           elevation: 2,
@@ -237,19 +275,26 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.info, color: Color(0xFF2196F3)),
+                    const Icon(Icons.check_circle, color: Colors.green),
                     const SizedBox(width: 8),
                     const Text(
-                      'Health Insight',
+                      'Successfully Logged',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        color: Colors.green,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildHealthInsight(),
+                Text(
+                  'Your symptom has been recorded and will be analyzed for health insights. Check your notifications for any health recommendations.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
               ],
             ),
           ),
@@ -264,65 +309,6 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             child: const Text('Log Another Symptom'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHealthInsight() {
-    final symptom = _symptomsController.text.toLowerCase();
-    final severity = int.tryParse(_severityController.text) ?? 3;
-
-    String insight = '';
-    Color insightColor = Colors.orange;
-
-    if (symptom.contains('headache')) {
-      if (severity >= 4) {
-        insight = 'Your headache is severe. Consider consulting with a healthcare provider if it persists or is accompanied by other symptoms like fever, stiff neck, or vision changes.';
-      } else {
-        insight = 'For mild to moderate headaches, try rest, hydration, and over-the-counter pain relievers if appropriate. If headaches are recurring, consider tracking potential triggers.';
-        insightColor = const Color(0xFF2196F3); // Updated to blue
-      }
-    } else if (symptom.contains('fever')) {
-      if (severity >= 4) {
-        insight = 'Your fever is high. Consider consulting with a healthcare provider, especially if it persists for more than 3 days or is accompanied by severe symptoms.';
-      } else {
-        insight = 'For mild fever, ensure adequate rest and hydration. Monitor your temperature regularly and consider over-the-counter fever reducers if appropriate.';
-        insightColor = const Color(0xFF2196F3); // Updated to blue
-      }
-    } else if (symptom.contains('cough')) {
-      if (severity >= 4) {
-        insight = 'Your cough is severe. Consider consulting with a healthcare provider, especially if it\'s accompanied by shortness of breath, chest pain, or produces colored phlegm.';
-      } else {
-        insight = 'For mild to moderate cough, ensure adequate hydration and rest. Consider honey (if appropriate) or over-the-counter cough suppressants for comfort.';
-        insightColor = const Color(0xFF2196F3); // Updated to blue
-      }
-    } else {
-      if (severity >= 4) {
-        insight = 'Your symptoms are severe. Consider consulting with a healthcare provider for proper evaluation and treatment.';
-      } else {
-        insight = 'Monitor your symptoms and ensure adequate rest and hydration. If symptoms persist or worsen, consider consulting with a healthcare provider.';
-        insightColor = const Color(0xFF2196F3); // Updated to blue
-      }
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          insight,
-          style: TextStyle(
-            color: insightColor,
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Note: This is general information and not medical advice. Always consult with your healthcare provider for proper diagnosis and treatment.',
-          style: TextStyle(
-            fontStyle: FontStyle.italic,
-            fontSize: 12,
-            color: Colors.grey,
           ),
         ),
       ],

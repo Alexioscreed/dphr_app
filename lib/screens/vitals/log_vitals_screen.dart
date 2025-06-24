@@ -1,5 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import '../../models/vital_measurement.dart';
+import '../../services/camera_scan_service.dart';
+import '../../providers/auth_provider.dart';
+import '../../providers/vital_measurements_provider.dart';
+import '../../services/api_service.dart';
 
 class LogVitalsScreen extends StatefulWidget {
   const LogVitalsScreen({Key? key}) : super(key: key);
@@ -67,18 +72,19 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
       });
 
       try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 1));
-
         // Create vital measurement object
         final vital = VitalMeasurement(
           type: _selectedVitalType,
           value: '${_valueController.text} ${_getUnit()}',
           date: DateTime.now(),
           notes: _notesController.text,
-        );
+        ); // Save to backend
+        await _saveVitalToBackend(vital);
 
-        // In a real app, you would save this to your provider or database
+        // Add to provider for health analysis
+        final vitalProvider =
+            Provider.of<VitalMeasurementsProvider>(context, listen: false);
+        await vitalProvider.addMeasurement(vital, context);
 
         setState(() {
           _savedVital = vital;
@@ -96,6 +102,53 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
           SnackBar(content: Text('Failed to log vital: ${e.toString()}')),
         );
       }
+    }
+  }
+  Future<void> _saveVitalToBackend(VitalMeasurement vital) async {
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final apiService = Provider.of<ApiService>(context, listen: false);
+
+      if (authProvider.currentUser?.patientUuid == null) {
+        throw Exception('User not authenticated');
+      }
+
+      final vitalData = {
+        'type': vital.type,
+        'value': vital.value,
+        'recordedAt': vital.date.toIso8601String(),
+        'notes': vital.notes,
+      };
+
+      final response = await apiService.post(
+        'vital-signs/patient-uuid/${authProvider.currentUser!.patientUuid}',
+        vitalData,
+      );
+
+      if (response['error'] != null) {
+        throw Exception(response['error']);
+      }
+      
+      debugPrint('Vital saved successfully: ${response.toString()}');
+    } catch (e) {
+      debugPrint('Error saving vital to backend: $e');
+      throw e; // Re-throw to show user feedback
+    }
+  }
+
+  Future<void> _scanValue() async {
+    try {
+      final scannedValue =
+          await CameraScanService.showScanDialog(context, _selectedVitalType);
+      if (scannedValue != null && scannedValue.isNotEmpty) {
+        setState(() {
+          _valueController.text = scannedValue;
+        });
+      }
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error scanning value: ${e.toString()}')),
+      );
     }
   }
 
@@ -122,10 +175,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
             ),
           ),
           const SizedBox(height: 24),
-          if (_showConfirmation)
-            _buildConfirmation()
-          else
-            _buildVitalsForm(),
+          if (_showConfirmation) _buildConfirmation() else _buildVitalsForm(),
         ],
       ),
     );
@@ -166,34 +216,52 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
             },
           ),
           const SizedBox(height: 16),
-          TextFormField(
-            controller: _valueController,
-            decoration: InputDecoration(
-              labelText: 'Value',
-              hintText: 'e.g., ${_getPlaceholder()}',
-              border: const OutlineInputBorder(),
-              prefixIcon: const Icon(Icons.numbers),
-              suffixText: _getUnit(),
-            ),
-            keyboardType: TextInputType.numberWithOptions(decimal: true),
-            validator: (value) {
-              if (value == null || value.isEmpty) {
-                return 'Please enter a value';
-              }
+          Row(
+            children: [
+              Expanded(
+                child: TextFormField(
+                  controller: _valueController,
+                  decoration: InputDecoration(
+                    labelText: 'Value',
+                    hintText: 'e.g., ${_getPlaceholder()}',
+                    border: const OutlineInputBorder(),
+                    prefixIcon: const Icon(Icons.numbers),
+                    suffixText: _getUnit(),
+                  ),
+                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Please enter a value';
+                    }
 
-              // Special validation for blood pressure (format: 120/80)
-              if (_selectedVitalType == 'Blood Pressure') {
-                if (!RegExp(r'^\d+\/\d+$').hasMatch(value)) {
-                  return 'Enter in format: 120/80';
-                }
-              }
-              // Validation for other numeric values
-              else if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(value)) {
-                return 'Please enter a valid number';
-              }
+                    // Special validation for blood pressure (format: 120/80)
+                    if (_selectedVitalType == 'Blood Pressure') {
+                      if (!RegExp(r'^\d+\/\d+$').hasMatch(value)) {
+                        return 'Enter in format: 120/80';
+                      }
+                    }
+                    // Validation for other numeric values
+                    else if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(value)) {
+                      return 'Please enter a valid number';
+                    }
 
-              return null;
-            },
+                    return null;
+                  },
+                ),
+              ),
+              const SizedBox(width: 8),
+              Container(
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2196F3),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: IconButton(
+                  onPressed: _isLoading ? null : _scanValue,
+                  icon: const Icon(Icons.camera_alt, color: Colors.white),
+                  tooltip: 'Scan $_selectedVitalType',
+                ),
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           TextFormField(
@@ -217,13 +285,13 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
               ),
               child: _isLoading
                   ? const SizedBox(
-                height: 20,
-                width: 20,
-                child: CircularProgressIndicator(
-                  color: Colors.white,
-                  strokeWidth: 2,
-                ),
-              )
+                      height: 20,
+                      width: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
                   : const Text('Log Vital Measurement'),
             ),
           ),
@@ -279,14 +347,6 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
             ),
           ),
         ),
-        const SizedBox(height: 24),
-        const Text(
-          'Recommendation',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
         const SizedBox(height: 16),
         Card(
           elevation: 2,
@@ -297,19 +357,26 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
               children: [
                 Row(
                   children: [
-                    const Icon(Icons.info, color: Color(0xFF2196F3)),
+                    const Icon(Icons.check_circle, color: Colors.green),
                     const SizedBox(width: 8),
                     const Text(
-                      'Health Insight',
+                      'Successfully Logged',
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 16,
+                        color: Colors.green,
                       ),
                     ),
                   ],
                 ),
                 const SizedBox(height: 16),
-                _buildHealthInsight(),
+                Text(
+                  'Your vital measurement has been recorded and will be analyzed for health insights. Check your notifications for any health recommendations.',
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                  ),
+                ),
               ],
             ),
           ),
@@ -324,129 +391,6 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
               padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             child: const Text('Log Another Vital'),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildHealthInsight() {
-    if (_savedVital == null) return const SizedBox.shrink();
-
-    // Generate insights based on vital type and value
-    String insight = '';
-    bool isNormal = true;
-
-    switch (_savedVital!.type) {
-      case 'Blood Pressure':
-        final parts = _savedVital!.value.split(' ')[0].split('/');
-        final systolic = int.tryParse(parts[0]) ?? 0;
-        final diastolic = int.tryParse(parts[1]) ?? 0;
-
-        if (systolic < 90 || diastolic < 60) {
-          insight = 'Your blood pressure is lower than the normal range (90/60 - 120/80 mmHg). Consider consulting with your healthcare provider.';
-          isNormal = false;
-        } else if (systolic > 120 || diastolic > 80) {
-          if (systolic > 140 || diastolic > 90) {
-            insight = 'Your blood pressure is high (above 140/90 mmHg). It\'s recommended to consult with your healthcare provider.';
-            isNormal = false;
-          } else {
-            insight = 'Your blood pressure is slightly elevated. Consider lifestyle changes like reducing salt intake and regular exercise.';
-            isNormal = false;
-          }
-        } else {
-          insight = 'Your blood pressure is within the normal range (90/60 - 120/80 mmHg). Keep up the good work!';
-        }
-        break;
-
-      case 'Heart Rate':
-        final rate = int.tryParse(_savedVital!.value.split(' ')[0]) ?? 0;
-
-        if (rate < 60) {
-          insight = 'Your heart rate is lower than the typical resting range (60-100 bpm). If you\'re not an athlete, consider consulting with your healthcare provider.';
-          isNormal = false;
-        } else if (rate > 100) {
-          insight = 'Your heart rate is higher than the typical resting range (60-100 bpm). Consider consulting with your healthcare provider if this persists.';
-          isNormal = false;
-        } else {
-          insight = 'Your heart rate is within the normal resting range (60-100 bpm).';
-        }
-        break;
-
-      case 'Temperature':
-        final temp = double.tryParse(_savedVital!.value.split(' ')[0]) ?? 0;
-
-        if (temp < 36.1) {
-          insight = 'Your body temperature is below the normal range (36.1-37.2°C). Consider consulting with your healthcare provider if this persists.';
-          isNormal = false;
-        } else if (temp > 37.2) {
-          if (temp > 38.0) {
-            insight = 'You have a fever (above 38.0°C). Consider taking appropriate medication and consulting with your healthcare provider if it persists.';
-            isNormal = false;
-          } else {
-            insight = 'Your body temperature is slightly elevated. Monitor for other symptoms and rest.';
-            isNormal = false;
-          }
-        } else {
-          insight = 'Your body temperature is within the normal range (36.1-37.2°C).';
-        }
-        break;
-
-      case 'Blood Glucose':
-        final glucose = int.tryParse(_savedVital!.value.split(' ')[0]) ?? 0;
-
-        if (glucose < 70) {
-          insight = 'Your blood glucose is below the normal fasting range (70-100 mg/dL). Consider consuming some carbohydrates and consulting with your healthcare provider.';
-          isNormal = false;
-        } else if (glucose > 100) {
-          if (glucose > 126) {
-            insight = 'Your blood glucose is high (above 126 mg/dL when fasting). It\'s recommended to consult with your healthcare provider.';
-            isNormal = false;
-          } else {
-            insight = 'Your blood glucose is slightly elevated. Consider lifestyle changes like diet modification and regular exercise.';
-            isNormal = false;
-          }
-        } else {
-          insight = 'Your blood glucose is within the normal fasting range (70-100 mg/dL).';
-        }
-        break;
-
-      case 'Oxygen Saturation':
-        final saturation = int.tryParse(_savedVital!.value.split(' ')[0]) ?? 0;
-
-        if (saturation < 95) {
-          if (saturation < 90) {
-            insight = 'Your oxygen saturation is significantly below normal (below 90%). Seek medical attention immediately.';
-            isNormal = false;
-          } else {
-            insight = 'Your oxygen saturation is slightly below the normal range (95-100%). Consider consulting with your healthcare provider.';
-            isNormal = false;
-          }
-        } else {
-          insight = 'Your oxygen saturation is within the normal range (95-100%).';
-        }
-        break;
-
-      default:
-        insight = 'Continue monitoring your ${_savedVital!.type.toLowerCase()} regularly to track changes over time.';
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          insight,
-          style: TextStyle(
-            color: isNormal ? const Color(0xFF2196F3) : Colors.orange,
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Note: This is general information and not medical advice. Always consult with your healthcare provider for proper diagnosis and treatment.',
-          style: TextStyle(
-            fontStyle: FontStyle.italic,
-            fontSize: 12,
-            color: Colors.grey,
           ),
         ),
       ],

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/vital_measurements_provider.dart';
+import '../../providers/notification_provider.dart';
 import '../../models/vital_measurement.dart';
+import '../../services/health_analytics_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 
 class HealthProgressScreen extends StatefulWidget {
@@ -381,9 +383,10 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
               ],
             ),
           ),
-        ),
-        const SizedBox(height: 16),
-        Row(
+        ),            const SizedBox(height: 16),
+            _buildRiskAnalysisCard(),
+            const SizedBox(height: 24),
+            Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
             _buildLegendItem('Systolic', Colors.red),
@@ -602,6 +605,184 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
         return Icons.air;
       default:
         return Icons.medical_services;
+    }
+  }
+
+  Widget _buildRiskAnalysisCard() {
+    final vitalMeasurementsProvider = Provider.of<VitalMeasurementsProvider>(context);
+    
+    // Analyze current health data
+    final vitals = vitalMeasurementsProvider.measurements;
+    final symptoms = vitalMeasurementsProvider.symptoms;
+    
+    List<HealthRisk> allRisks = [];
+    
+    if (vitals.isNotEmpty) {
+      allRisks.addAll(HealthAnalyticsService.analyzeVitalMeasurements(vitals));
+    }
+    
+    if (symptoms.isNotEmpty) {
+      allRisks.addAll(HealthAnalyticsService.analyzeSymptoms(symptoms));
+    }
+
+    // Filter to show only medium and high risks
+    final importantRisks = allRisks.where((risk) => 
+      risk.severity == 'MEDIUM' || risk.severity == 'HIGH' || risk.severity == 'CRITICAL'
+    ).toList();
+
+    return Card(
+      elevation: 4,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(
+                  importantRisks.isEmpty ? Icons.health_and_safety : Icons.warning,
+                  color: importantRisks.isEmpty ? Colors.green : Colors.orange,
+                ),
+                const SizedBox(width: 8),
+                Text(
+                  'Health Risk Analysis',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            if (importantRisks.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.green.withOpacity(0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.check_circle, color: Colors.green),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'No significant health risks detected based on your current data.',
+                        style: TextStyle(color: Colors.green),
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else
+              ...importantRisks.take(3).map((risk) => Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _getRiskColor(risk.severity).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: _getRiskColor(risk.severity).withOpacity(0.3)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Icon(
+                          _getRiskIcon(risk.severity),
+                          color: _getRiskColor(risk.severity),
+                          size: 20,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            risk.title,
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: _getRiskColor(risk.severity),
+                            ),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: _getRiskColor(risk.severity),
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Text(
+                            risk.severity,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 10,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      risk.description,
+                      style: const TextStyle(fontSize: 12),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Recommendation: ${risk.recommendation}',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontStyle: FontStyle.italic,
+                      ),
+                    ),
+                  ],
+                ),
+              )),
+            if (importantRisks.length > 3)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Text(
+                  'And ${importantRisks.length - 3} more risks. Check notifications for details.',
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey[600],
+                    fontStyle: FontStyle.italic,
+                  ),
+                ),
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Color _getRiskColor(String severity) {
+    switch (severity) {
+      case 'CRITICAL':
+        return Colors.red;
+      case 'HIGH':
+        return Colors.orange;
+      case 'MEDIUM':
+        return Colors.yellow[700]!;
+      case 'LOW':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
+  }
+
+  IconData _getRiskIcon(String severity) {
+    switch (severity) {
+      case 'CRITICAL':
+        return Icons.error;
+      case 'HIGH':
+        return Icons.warning;
+      case 'MEDIUM':
+        return Icons.info;
+      case 'LOW':
+        return Icons.help_outline;
+      default:
+        return Icons.help_outline;
     }
   }
 }

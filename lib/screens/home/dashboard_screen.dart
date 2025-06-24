@@ -1,16 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../health_records/health_records_screen.dart';
+import '../health_records/visits_health_records_screen.dart';
 import '../progress/health_progress_screen.dart';
 import '../settings/settings_screen.dart';
 import '../shared_records/shared_records_screen.dart';
 import '../testing/medical_records_test_screen.dart';
+import '../notifications/notifications_screen.dart';
 import '../../widgets/notification_badge.dart';
 import '../appointments/appointments_screen.dart';
 import '../appointments/book_appointment_screen.dart';
 import '../sharing/share_data_screen.dart';
 import '../log_section_screen.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/notification_provider.dart' as notifications;
 import '../auth/login_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
@@ -22,10 +24,9 @@ class DashboardScreen extends StatefulWidget {
 
 class _DashboardScreenState extends State<DashboardScreen> {
   int _selectedIndex = 0;
-
   final List<Widget> _screens = [
     const DashboardHomeScreen(),
-    const HealthRecordsScreen(),
+    const VisitsHealthRecordsScreen(),
     const LogSectionScreen(),
     const HealthProgressScreen(),
     const AppointmentsScreen(),
@@ -58,16 +59,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
         backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
         actions: [
-          NotificationBadge(
-            count: 3,
-            onTap: () {
-              // Navigate to notifications
+          Consumer<notifications.NotificationProvider>(
+            builder: (context, notificationProvider, child) {
+              return NotificationBadge(
+                count: notificationProvider.unreadCount,
+                onTap: () {
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                      builder: (context) => const NotificationsScreen(),
+                    ),
+                  );
+                },
+              );
             },
-          ),          IconButton(
+          ),
+          IconButton(
             icon: const Icon(Icons.cloud_download),
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SharedRecordsScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const SharedRecordsScreen()),
               );
             },
             tooltip: 'Shared Records',
@@ -76,7 +87,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             icon: const Icon(Icons.bug_report),
             onPressed: () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const MedicalRecordsTestScreen()),
+                MaterialPageRoute(
+                    builder: (context) => const MedicalRecordsTestScreen()),
               );
             },
             tooltip: 'Medical Records Test',
@@ -95,9 +107,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
       bottomNavigationBar: Theme(
         data: Theme.of(context).copyWith(
           bottomNavigationBarTheme: BottomNavigationBarThemeData(
-            backgroundColor: isDarkMode
-                ? const Color(0xFF1E1E1E)
-                : Colors.white,
+            backgroundColor:
+                isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
             selectedItemColor: const Color(0xFF2196F3),
             unselectedItemColor: Colors.grey,
             showUnselectedLabels: true,
@@ -182,7 +193,9 @@ class DashboardHomeScreen extends StatelessWidget {
               radius: 30,
               backgroundColor: const Color(0xFF1976D2),
               child: Text(
-                user?.name.isNotEmpty == true ? user!.name[0].toUpperCase() : 'U',
+                user?.name.isNotEmpty == true
+                    ? user!.name[0].toUpperCase()
+                    : 'U',
                 style: const TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
@@ -376,25 +389,26 @@ class DashboardHomeScreen extends StatelessWidget {
                 subtitle: Text(activities[index]['description']),
                 trailing: activities[index]['isRecommendation'] == true
                     ? ElevatedButton(
-                  onPressed: () {
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (context) => BookAppointmentScreen(
-                          recommendedSpecialty: activities[index]['specialty'],
-                          symptomReason: activities[index]['reason'],
+                        onPressed: () {
+                          Navigator.of(context).push(
+                            MaterialPageRoute(
+                              builder: (context) => BookAppointmentScreen(
+                                recommendedSpecialty: activities[index]
+                                    ['specialty'],
+                                symptomReason: activities[index]['reason'],
+                              ),
+                            ),
+                          );
+                        },
+                        child: const Text('Book'),
+                      )
+                    : Text(
+                        activities[index]['time'],
+                        style: const TextStyle(
+                          color: Colors.grey,
+                          fontSize: 12,
                         ),
                       ),
-                    );
-                  },
-                  child: const Text('Book'),
-                )
-                    : Text(
-                  activities[index]['time'],
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
               );
             },
           ),
@@ -425,7 +439,8 @@ class DashboardHomeScreen extends StatelessWidget {
                 label: 'Log\nHealth',
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const LogSectionScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const LogSectionScreen()),
                   );
                 },
               ),
@@ -434,7 +449,8 @@ class DashboardHomeScreen extends StatelessWidget {
                 label: 'Appointments',
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const AppointmentsScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const AppointmentsScreen()),
                   );
                 },
               ),
@@ -450,7 +466,8 @@ class DashboardHomeScreen extends StatelessWidget {
                 label: 'Share\nData',
                 onTap: () {
                   Navigator.of(context).push(
-                    MaterialPageRoute(builder: (context) => const ShareDataScreen()),
+                    MaterialPageRoute(
+                        builder: (context) => const ShareDataScreen()),
                   );
                 },
               ),

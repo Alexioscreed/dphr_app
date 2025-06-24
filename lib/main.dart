@@ -3,7 +3,8 @@ import 'package:provider/provider.dart';
 import 'screens/splash_screen.dart';
 import 'providers/auth_provider.dart';
 import 'providers/health_record_provider.dart';
-import 'providers/notification_provider.dart';
+import 'providers/visits_health_provider.dart';
+import 'providers/notification_provider.dart' as notifications;
 import 'providers/api_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/appointment_provider.dart';
@@ -11,6 +12,7 @@ import 'providers/vital_measurements_provider.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
 import 'services/medical_records_service.dart';
+import 'services/health_records_service.dart';
 import 'services/doctor_service.dart';
 import 'services/prescription_service.dart';
 import 'services/connectivity_service.dart';
@@ -53,11 +55,15 @@ void main() async {
         // Initialize DoctorService with ApiService dependency
         ProxyProvider<ApiService, DoctorService>(
           update: (context, apiService, previous) => DoctorService(apiService),
-        ),
-        // Initialize PrescriptionService with ApiService dependency
+        ), // Initialize PrescriptionService with ApiService dependency
         ProxyProvider<ApiService, PrescriptionService>(
           update: (context, apiService, previous) =>
               PrescriptionService(apiService),
+        ),
+        // Initialize HealthRecordsService with dependencies
+        ProxyProvider2<ApiService, AuthService, HealthRecordsService>(
+          update: (context, apiService, authService, previous) =>
+              HealthRecordsService(apiService, authService),
         ), // Initialize providers with dependencies
         ChangeNotifierProxyProvider<AuthService, AuthProvider>(
           create: (context) =>
@@ -79,7 +85,23 @@ void main() async {
               HealthRecordProvider(medicalRecordsService, authService,
                   connectivityService, cacheService),
         ),
-        ChangeNotifierProvider(create: (_) => NotificationProvider()),
+        // Initialize VisitsHealthProvider with dependencies
+        ChangeNotifierProxyProvider4<HealthRecordsService, AuthService,
+            ConnectivityService, CacheService, VisitsHealthProvider>(
+          create: (context) => VisitsHealthProvider(
+            Provider.of<HealthRecordsService>(context, listen: false),
+            Provider.of<AuthService>(context, listen: false),
+            Provider.of<ConnectivityService>(context, listen: false),
+            Provider.of<CacheService>(context, listen: false),
+          ),
+          update: (context, healthRecordsService, authService,
+                  connectivityService, cacheService, previous) =>
+              previous ??
+              VisitsHealthProvider(healthRecordsService, authService,
+                  connectivityService, cacheService),
+        ),
+        ChangeNotifierProvider(
+            create: (_) => notifications.NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApiProvider()),
         ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => AppointmentProvider()),
@@ -92,11 +114,13 @@ void main() async {
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
-
   @override
   Widget build(BuildContext context) {
     // Initialize auth provider
     Provider.of<AuthProvider>(context, listen: false).initialize();
+    // Initialize notification provider
+    Provider.of<notifications.NotificationProvider>(context, listen: false)
+        .initialize();
 
     final themeProvider = Provider.of<ThemeProvider>(context);
 

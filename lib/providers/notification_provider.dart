@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../services/health_analytics_service.dart';
+import '../models/vital_measurement.dart';
+import '../models/symptom.dart';
 
 class Notification {
   final String id;
@@ -137,7 +140,6 @@ class NotificationProvider with ChangeNotifier {
 
     // In a real app, you would update this in a database or API
   }
-
   // Toggle notifications enabled
   Future<void> toggleNotifications(bool enabled) async {
     _notificationsEnabled = enabled;
@@ -147,5 +149,83 @@ class NotificationProvider with ChangeNotifier {
     await prefs.setBool(_notificationsEnabledKey, enabled);
 
     notifyListeners();
+  }
+
+  // Add health risk notifications
+  Future<void> addHealthRiskNotifications(List<HealthRisk> risks) async {
+    if (!_notificationsEnabled) return;
+
+    for (var risk in risks) {
+      // Check if we already have a notification for this risk type today
+      final today = DateTime.now();
+      final existingRisk = _notifications.where((n) =>
+        n.type == 'health_risk' &&
+        n.title.contains(risk.type) &&
+        n.date.year == today.year &&
+        n.date.month == today.month &&
+        n.date.day == today.day
+      ).isNotEmpty;
+
+      if (!existingRisk) {
+        await addNotification(
+          title: risk.title,
+          message: '${risk.description}\n\nRecommendation: ${risk.recommendation}',
+          type: 'health_risk',
+        );
+      }
+    }
+  }
+
+  // Analyze health data and create notifications
+  Future<void> analyzeHealthDataAndNotify({
+    List<VitalMeasurement>? vitals,
+    List<Symptom>? symptoms,
+  }) async {
+    try {
+      List<HealthRisk> allRisks = [];
+
+      // Analyze vitals if provided
+      if (vitals != null && vitals.isNotEmpty) {
+        final vitalRisks = HealthAnalyticsService.analyzeVitalMeasurements(vitals);
+        allRisks.addAll(vitalRisks);
+      }
+
+      // Analyze symptoms if provided
+      if (symptoms != null && symptoms.isNotEmpty) {
+        final symptomRisks = HealthAnalyticsService.analyzeSymptoms(symptoms);
+        allRisks.addAll(symptomRisks);
+      }
+
+      // Filter only high and critical risks for notifications
+      final highRisks = allRisks.where((risk) =>
+        risk.severity == 'HIGH' || risk.severity == 'CRITICAL'
+      ).toList();
+
+      if (highRisks.isNotEmpty) {
+        await addHealthRiskNotifications(highRisks);
+      }
+    } catch (e) {
+      debugPrint('Error analyzing health data: $e');
+    }
+  }
+
+  // Add a general notification
+  Future<void> addNotification({
+    required String title,
+    required String message,
+    required String type,
+  }) async {
+    final notification = Notification(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      title: title,
+      message: message,
+      date: DateTime.now(),
+      type: type,
+    );
+
+    _notifications.insert(0, notification); // Add to beginning
+    notifyListeners();
+
+    // In a real app, you would save this to a database or API
   }
 }
