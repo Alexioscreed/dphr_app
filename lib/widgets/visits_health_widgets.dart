@@ -34,7 +34,10 @@ class DemographicsCard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
             _buildInfoRow(
-                'Name', '${patient.firstName ?? ''} ${patient.lastName ?? ''}'),
+                'Name',
+                patient.fullName?.isNotEmpty == true
+                    ? patient.fullName!
+                    : '${patient.firstName ?? ''} ${patient.lastName ?? ''}'),
             _buildInfoRow('Gender', patient.gender ?? 'N/A'),
             _buildInfoRow('Date of Birth', _formatDate(patient.birthdate)),
             _buildInfoRow(

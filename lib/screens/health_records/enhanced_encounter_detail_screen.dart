@@ -214,7 +214,10 @@ class EnhancedEncounterDetailScreen extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             _buildDemographicRow(
-                'Name', '${patient.firstName} ${patient.lastName}'),
+                'Name',
+                patient.fullName.isNotEmpty
+                    ? patient.fullName
+                    : '${patient.firstName} ${patient.lastName}'),
             _buildDemographicRow('MRN', patient.mrn ?? 'Not Available'),
             if (patient.dateOfBirth != null)
               _buildDemographicRow(

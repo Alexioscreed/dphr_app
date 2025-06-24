@@ -49,7 +49,8 @@ class Patient {
       'emergencyContactName': emergencyContactName,
       'emergencyContactPhone': emergencyContactPhone,
       'allergies': allergies,
-    };  }
+    };
+  }
 
   // Create from Map for API responses
   factory Patient.fromMap(Map<String, dynamic> map) {
