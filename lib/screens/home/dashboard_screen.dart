@@ -14,6 +14,7 @@ import '../log_section_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart' as notifications;
 import '../auth/login_screen.dart';
+import '../health_records/visit_details_demo_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -455,10 +456,13 @@ class DashboardHomeScreen extends StatelessWidget {
                 },
               ),
               _buildActionButton(
-                icon: Icons.medication,
-                label: 'Medications',
+                icon: Icons.medical_information,
+                label: 'Visit\nDetails',
                 onTap: () {
-                  // Navigate to medications
+                  Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (context) => const VisitDetailsDemoScreen()),
+                  );
                 },
               ),
               _buildActionButton(

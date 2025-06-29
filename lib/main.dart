@@ -112,16 +112,30 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
+
+  @override
+  State<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends State<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize providers after the widget is built
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      // Initialize auth provider
+      Provider.of<AuthProvider>(context, listen: false).initialize();
+      // Initialize notification provider
+      Provider.of<notifications.NotificationProvider>(context, listen: false)
+          .initialize();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
-    // Initialize auth provider
-    Provider.of<AuthProvider>(context, listen: false).initialize();
-    // Initialize notification provider
-    Provider.of<notifications.NotificationProvider>(context, listen: false)
-        .initialize();
-
     final themeProvider = Provider.of<ThemeProvider>(context);
 
     return MaterialApp(

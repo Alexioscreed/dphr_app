@@ -180,6 +180,8 @@ class EncounterRecord {
   final String? encounterUuid;
   final String? encounterType;
   final String? encounterDate;
+  final String? startDatetime;
+  final String? stopDatetime;
   final String? location;
   final String? provider;
   final List<String>? diagnoses;
@@ -192,6 +194,8 @@ class EncounterRecord {
     this.encounterUuid,
     this.encounterType,
     this.encounterDate,
+    this.startDatetime,
+    this.stopDatetime,
     this.location,
     this.provider,
     this.diagnoses,
@@ -200,12 +204,13 @@ class EncounterRecord {
     this.clinicalNotes,
     this.status,
   });
-
   factory EncounterRecord.fromJson(Map<String, dynamic> json) {
     return EncounterRecord(
       encounterUuid: json['encounterUuid'],
       encounterType: json['encounterType'],
       encounterDate: json['encounterDate'],
+      startDatetime: json['startDatetime'],
+      stopDatetime: json['stopDatetime'],
       location: json['location'],
       provider: json['provider'],
       diagnoses: json['diagnoses'] != null
@@ -225,12 +230,13 @@ class EncounterRecord {
       status: json['status'],
     );
   }
-
   Map<String, dynamic> toJson() {
     return {
       'encounterUuid': encounterUuid,
       'encounterType': encounterType,
       'encounterDate': encounterDate,
+      'startDatetime': startDatetime,
+      'stopDatetime': stopDatetime,
       'location': location,
       'provider': provider,
       'diagnoses': diagnoses,
@@ -247,7 +253,9 @@ class VisitRecord {
   final String? visitType;
   final String? location;
   final String? startDate;
+  final String? startDatetime;
   final String? endDate;
+  final String? stopDatetime;
   final String? status;
   final List<EncounterRecord>? encounters;
   final PatientDemographics? patientInfo;
@@ -257,19 +265,22 @@ class VisitRecord {
     this.visitType,
     this.location,
     this.startDate,
+    this.startDatetime,
     this.endDate,
+    this.stopDatetime,
     this.status,
     this.encounters,
     this.patientInfo,
   });
-
   factory VisitRecord.fromJson(Map<String, dynamic> json) {
     return VisitRecord(
       visitUuid: json['visitUuid'],
       visitType: json['visitType'],
       location: json['location'],
       startDate: json['startDate'],
+      startDatetime: json['startDatetime'],
       endDate: json['endDate'],
+      stopDatetime: json['stopDatetime'],
       status: json['status'],
       encounters: json['encounters'] != null
           ? (json['encounters'] as List)
@@ -281,14 +292,15 @@ class VisitRecord {
           : null,
     );
   }
-
   Map<String, dynamic> toJson() {
     return {
       'visitUuid': visitUuid,
       'visitType': visitType,
       'location': location,
       'startDate': startDate,
+      'startDatetime': startDatetime,
       'endDate': endDate,
+      'stopDatetime': stopDatetime,
       'status': status,
       'encounters': encounters?.map((enc) => enc.toJson()).toList(),
       'patientInfo': patientInfo?.toJson(),

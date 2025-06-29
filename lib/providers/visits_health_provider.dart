@@ -21,6 +21,10 @@ class VisitsHealthProvider with ChangeNotifier {
   String? _connectionStatus;
   Map<String, dynamic>? _healthSummary;
 
+  // Enhanced health records methods
+  List<VisitRecord> _enhancedVisits = [];
+  PatientHealthRecords? _enhancedHealthRecords;
+
   VisitsHealthProvider(
     this._healthRecordsService,
     this._authService,
@@ -40,6 +44,8 @@ class VisitsHealthProvider with ChangeNotifier {
   bool get patientFound => _patientFound;
   String? get connectionStatus => _connectionStatus;
   Map<String, dynamic>? get healthSummary => _healthSummary;
+  List<VisitRecord> get enhancedVisits => _enhancedVisits;
+  PatientHealthRecords? get enhancedHealthRecords => _enhancedHealthRecords;
 
   void _onConnectivityChanged() {
     final wasOffline = _isOffline;
@@ -277,56 +283,146 @@ class VisitsHealthProvider with ChangeNotifier {
     }
   }
 
-  /// Get observations by category
-  Map<String, List<ObservationRecord>> getObservationsByCategory() {
-    if (_healthRecords?.visits == null) return {};
-
-    final Map<String, List<ObservationRecord>> categorizedObs = {};
-
-    for (final visit in _healthRecords!.visits!) {
-      for (final encounter in visit.encounters ?? []) {
-        for (final obs in encounter.observations ?? []) {
-          final category = obs.category ?? 'General';
-          categorizedObs.putIfAbsent(category, () => []);
-          categorizedObs[category]!.add(obs);
-        }
-      }
+  /// Fetch enhanced visits using the new backend endpoints
+  Future<void> fetchEnhancedVisits() async {
+    if (_isOffline) {
+      _error = 'Cannot fetch enhanced visits while offline';
+      notifyListeners();
+      return;
     }
 
-    return categorizedObs;
+    _setLoading(true);
+    try {
+      final visits = await _healthRecordsService.getMyEnhancedVisits();
+      _enhancedVisits = visits;
+      _patientFound = visits.isNotEmpty;
+      _lastSyncTime = DateTime.now();
+      _error = '';
+      // Cache the enhanced visits
+      await _cacheService.cacheData(
+          'enhanced_visits', visits.map((v) => v.toJson()).toList(),
+          expiry: const Duration(hours: 24));
+
+      debugPrint('Successfully fetched ${visits.length} enhanced visits');
+    } catch (e) {
+      _error = 'Failed to fetch enhanced visits: $e';
+      debugPrint('Error fetching enhanced visits: $e');
+
+      // Try to load from cache
+      await _loadEnhancedVisitsFromCache();
+    }
+    _setLoading(false);
   }
 
-  /// Get all prescriptions
-  List<OrderRecord> getAllPrescriptions() {
-    if (_healthRecords?.visits == null) return [];
-
-    final List<OrderRecord> allPrescriptions = [];
-
-    for (final visit in _healthRecords!.visits!) {
-      for (final encounter in visit.encounters ?? []) {
-        for (final prescription in encounter.prescriptions ?? []) {
-          allPrescriptions.add(prescription);
-        }
-      }
+  /// Fetch enhanced health records (including demographics and visits)
+  Future<void> fetchEnhancedHealthRecords() async {
+    if (_isOffline) {
+      _error = 'Cannot fetch enhanced health records while offline';
+      notifyListeners();
+      return;
     }
 
-    return allPrescriptions;
+    _setLoading(true);
+    try {
+      final healthRecords =
+          await _healthRecordsService.getMyEnhancedHealthRecords();
+      _enhancedHealthRecords = healthRecords;
+
+      if (healthRecords != null) {
+        _enhancedVisits = healthRecords.visits ?? [];
+        _patientFound = true;
+        _lastSyncTime = DateTime.now();
+        _error = '';
+        // Cache the enhanced health records
+        await _cacheService.cacheData(
+            'enhanced_health_records', healthRecords.toJson(),
+            expiry: const Duration(hours: 24));
+
+        debugPrint('Successfully fetched enhanced health records');
+      } else {
+        _patientFound = false;
+        _error = 'No health records found';
+      }
+    } catch (e) {
+      _error = 'Failed to fetch enhanced health records: $e';
+      debugPrint('Error fetching enhanced health records: $e');
+
+      // Try to load from cache
+      await _loadEnhancedHealthRecordsFromCache();
+    }
+    _setLoading(false);
   }
 
-  /// Get all diagnoses
-  List<String> getAllDiagnoses() {
-    if (_healthRecords?.visits == null) return [];
-
-    final Set<String> allDiagnoses = {};
-
-    for (final visit in _healthRecords!.visits!) {
-      for (final encounter in visit.encounters ?? []) {
-        for (final diagnosis in encounter.diagnoses ?? []) {
-          allDiagnoses.add(diagnosis);
-        }
+  /// Load enhanced visits from cache
+  Future<void> _loadEnhancedVisitsFromCache() async {
+    try {
+      final cachedData = await _cacheService.getCachedData('enhanced_visits');
+      if (cachedData != null && cachedData is List) {
+        _enhancedVisits = cachedData
+            .map((visitData) => VisitRecord.fromJson(visitData))
+            .toList();
+        debugPrint(
+            'Loaded ${_enhancedVisits.length} enhanced visits from cache');
       }
+    } catch (e) {
+      debugPrint('Error loading enhanced visits from cache: $e');
+    }
+  }
+
+  /// Load enhanced health records from cache
+  Future<void> _loadEnhancedHealthRecordsFromCache() async {
+    try {
+      final cachedData =
+          await _cacheService.getCachedData('enhanced_health_records');
+      if (cachedData != null && cachedData is Map<String, dynamic>) {
+        _enhancedHealthRecords = PatientHealthRecords.fromJson(cachedData);
+        _enhancedVisits = _enhancedHealthRecords?.visits ?? [];
+        debugPrint('Loaded enhanced health records from cache');
+      }
+    } catch (e) {
+      debugPrint('Error loading enhanced health records from cache: $e');
+    }
+  }
+
+  /// Get medications from enhanced visits
+  List<Map<String, dynamic>> getEnhancedMedications() {
+    final allMedications = <Map<String, dynamic>>[];
+
+    for (final visit in _enhancedVisits) {
+      allMedications
+          .addAll(_healthRecordsService.extractMedicationsFromVisit(visit));
     }
 
-    return allDiagnoses.toList();
+    return allMedications;
+  }
+
+  /// Get diagnoses from enhanced visits
+  List<Map<String, dynamic>> getEnhancedDiagnoses() {
+    final allDiagnoses = <Map<String, dynamic>>[];
+
+    for (final visit in _enhancedVisits) {
+      allDiagnoses
+          .addAll(_healthRecordsService.extractDiagnosesFromVisit(visit));
+    }
+
+    return allDiagnoses;
+  }
+
+  /// Get observations from enhanced visits
+  List<Map<String, dynamic>> getEnhancedObservations() {
+    final allObservations = <Map<String, dynamic>>[];
+
+    for (final visit in _enhancedVisits) {
+      allObservations
+          .addAll(_healthRecordsService.extractObservationsFromVisit(visit));
+    }
+
+    return allObservations;
+  }
+
+  /// Private method to set loading state
+  void _setLoading(bool loading) {
+    _isLoading = loading;
+    notifyListeners();
   }
 }

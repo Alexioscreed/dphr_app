@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../services/connectivity_service.dart';
 import '../../models/patient_health_records.dart';
 import '../../widgets/visits_health_widgets.dart';
+import '../enhanced_health_records_screen.dart';
 
 class VisitsHealthRecordsScreen extends StatefulWidget {
   const VisitsHealthRecordsScreen({Key? key}) : super(key: key);
@@ -123,13 +124,21 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
                     tooltip: connectivityService.isOnline
                         ? 'Refresh data'
                         : 'No internet connection',
-                  ),
-                  // View toggle
+                  ), // View toggle
                   PopupMenuButton<String>(
                     onSelected: (value) {
-                      setState(() {
-                        _selectedView = value;
-                      });
+                      if (value == 'enhanced') {
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (context) =>
+                                const EnhancedHealthRecordsScreen(),
+                          ),
+                        );
+                      } else {
+                        setState(() {
+                          _selectedView = value;
+                        });
+                      }
                     },
                     itemBuilder: (context) => [
                       const PopupMenuItem(
@@ -138,6 +147,18 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
                           value: 'timeline', child: Text('Timeline View')),
                       const PopupMenuItem(
                           value: 'summary', child: Text('Summary View')),
+                      const PopupMenuDivider(),
+                      PopupMenuItem(
+                        value: 'enhanced',
+                        child: Row(
+                          children: [
+                            Icon(Icons.upgrade,
+                                size: 16, color: Colors.blue[700]),
+                            const SizedBox(width: 8),
+                            const Text('Enhanced View'),
+                          ],
+                        ),
+                      ),
                     ],
                     child: const Icon(Icons.view_module),
                   ),
@@ -336,47 +357,13 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
 
   Widget? _buildFloatingActionButton(
       BuildContext context, VisitsHealthProvider visitsProvider) {
-    if (kDebugMode) {
-      return FloatingActionButton(
-        onPressed: () => _showDebugDialog(context, visitsProvider),
-        tooltip: 'Debug Info',
-        child: const Icon(Icons.bug_report),
-      );
-    }
-    return null;
-  }
-
-  void _showDebugDialog(
-      BuildContext context, VisitsHealthProvider visitsProvider) {
-    showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Debug Information'),
-        content: SingleChildScrollView(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                  'Connection Status: ${visitsProvider.connectionStatus ?? "Unknown"}'),
-              Text('Patient Found: ${visitsProvider.patientFound}'),
-              Text(
-                  'Total Visits: ${visitsProvider.healthRecords?.totalVisits ?? 0}'),
-              Text(
-                  'Last Sync: ${visitsProvider.lastSyncTime?.toString() ?? "Never"}'),
-              Text('Source: ${visitsProvider.healthRecords?.source ?? "None"}'),
-              if (visitsProvider.error.isNotEmpty)
-                Text('Error: ${visitsProvider.error}'),
-            ],
-          ),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Close'),
-          ),
-        ],
-      ),
+    return FloatingActionButton.extended(
+      onPressed: () {
+        _fetchHealthRecords();
+      },
+      tooltip: 'Refresh Health Records',
+      icon: const Icon(Icons.refresh),
+      label: const Text('Refresh'),
     );
   }
 }

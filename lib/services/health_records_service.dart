@@ -196,4 +196,152 @@ class HealthRecordsService {
       'patientGender': healthRecords.demographics?.gender,
     };
   }
+
+  /// Get enhanced visits data for the authenticated user
+  Future<List<VisitRecord>> getMyEnhancedVisits() async {
+    try {
+      debugPrint('Fetching enhanced visits for authenticated user');
+
+      final response =
+          await _apiService.get('health-records/my-visits-enhanced');
+
+      if (response != null && response is List) {
+        debugPrint('Enhanced visits response: Found ${response.length} visits');
+        return response.map((visit) => VisitRecord.fromJson(visit)).toList();
+      } else if (response != null && response is Map<String, dynamic>) {
+        // Handle case where response is wrapped in an object
+        final visits = response['visits'] as List?;
+        if (visits != null) {
+          return visits.map((visit) => VisitRecord.fromJson(visit)).toList();
+        }
+      }
+
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching enhanced visits: $e');
+      throw Exception('Failed to fetch enhanced visits: $e');
+    }
+  }
+
+  /// Get enhanced visit data for a specific patient (admin/provider use)
+  Future<List<VisitRecord>> getPatientEnhancedVisits(String patientUuid) async {
+    try {
+      debugPrint('Fetching enhanced visits for patient: $patientUuid');
+
+      final response = await _apiService
+          .get('health-records/patient/$patientUuid/visits-enhanced');
+
+      if (response != null && response is List) {
+        debugPrint(
+            'Patient enhanced visits response: Found ${response.length} visits');
+        return response.map((visit) => VisitRecord.fromJson(visit)).toList();
+      } else if (response != null && response is Map<String, dynamic>) {
+        // Handle case where response is wrapped in an object
+        final visits = response['visits'] as List?;
+        if (visits != null) {
+          return visits.map((visit) => VisitRecord.fromJson(visit)).toList();
+        }
+      }
+
+      return [];
+    } catch (e) {
+      debugPrint('Error fetching patient enhanced visits: $e');
+      throw Exception('Failed to fetch patient enhanced visits: $e');
+    }
+  }
+
+  /// Get enhanced health records including demographics and visits
+  Future<PatientHealthRecords?> getMyEnhancedHealthRecords() async {
+    try {
+      debugPrint('Fetching enhanced health records for authenticated user');
+
+      final response =
+          await _apiService.get('health-records/my-enhanced-records');
+
+      if (response != null && response is Map<String, dynamic>) {
+        debugPrint('Enhanced health records response received');
+        return PatientHealthRecords.fromJson(response);
+      } else {
+        debugPrint('No enhanced health records found');
+        return null;
+      }
+    } catch (e) {
+      debugPrint('Error fetching enhanced health records: $e');
+      throw Exception('Failed to fetch enhanced health records: $e');
+    }
+  }
+
+  /// Extract medications from visit encounters with enhanced details
+  List<Map<String, dynamic>> extractMedicationsFromVisit(VisitRecord visit) {
+    final medications = <Map<String, dynamic>>[];
+
+    for (final encounter in visit.encounters ?? []) {
+      for (final prescription in encounter.prescriptions ?? []) {
+        medications.add({
+          'name': prescription.conceptDisplay ??
+              prescription.concept ??
+              'Unknown Medication',
+          'dosage': prescription.dosage,
+          'frequency': prescription.frequency,
+          'duration': prescription.duration,
+          'instructions': prescription.instructions,
+          'dateActivated': prescription.dateActivated,
+          'urgency': prescription.urgency,
+          'action': prescription.action,
+          'orderType': prescription.orderType,
+          'encounterType': encounter.encounterType,
+          'encounterDate': encounter.encounterDate ?? encounter.startDatetime,
+          'provider': encounter.provider,
+          'uuid': prescription.uuid,
+        });
+      }
+    }
+
+    return medications;
+  }
+
+  /// Extract diagnoses from visit encounters
+  List<Map<String, dynamic>> extractDiagnosesFromVisit(VisitRecord visit) {
+    final diagnoses = <Map<String, dynamic>>[];
+
+    for (final encounter in visit.encounters ?? []) {
+      for (final diagnosis in encounter.diagnoses ?? []) {
+        diagnoses.add({
+          'diagnosis': diagnosis,
+          'encounterType': encounter.encounterType,
+          'encounterDate': encounter.encounterDate ?? encounter.startDatetime,
+          'provider': encounter.provider,
+          'encounterUuid': encounter.encounterUuid,
+        });
+      }
+    }
+
+    return diagnoses;
+  }
+
+  /// Extract observations from visit encounters with enhanced details
+  List<Map<String, dynamic>> extractObservationsFromVisit(VisitRecord visit) {
+    final observations = <Map<String, dynamic>>[];
+
+    for (final encounter in visit.encounters ?? []) {
+      for (final obs in encounter.observations ?? []) {
+        observations.add({
+          'concept': obs.conceptDisplay ?? obs.concept ?? 'Unknown Observation',
+          'value': obs.value,
+          'valueDisplay': obs.valueDisplay,
+          'units': obs.units,
+          'normalRange': obs.normalRange,
+          'category': obs.category,
+          'obsDate': obs.obsDate,
+          'comment': obs.comment,
+          'encounterType': encounter.encounterType,
+          'encounterDate': encounter.encounterDate ?? encounter.startDatetime,
+          'provider': encounter.provider,
+          'uuid': obs.uuid,
+        });
+      }
+    }
+
+    return observations;
+  }
 }

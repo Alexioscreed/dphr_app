@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/patient_health_records.dart';
+import '../screens/health_records/patient_history_screen.dart';
 
 class DemographicsCard extends StatelessWidget {
   final PatientDemographics patient;
@@ -365,7 +366,7 @@ class HealthSummaryView extends StatelessWidget {
   String _formatDate(String dateString) {
     try {
       final date = DateTime.parse(dateString);
-      return DateFormat('MMM dd, yyyy').format(date);
+      return DateFormat('MMM dd, yyyy HH:mm').format(date);
     } catch (e) {
       return dateString;
     }
@@ -417,12 +418,14 @@ class HealthTimelineView extends StatelessWidget {
       itemCount: sortedVisits.length,
       itemBuilder: (context, index) {
         final visit = sortedVisits[index];
-        return _buildTimelineItem(visit, index == sortedVisits.length - 1);
+        return _buildTimelineItem(
+            context, visit, index == sortedVisits.length - 1);
       },
     );
   }
 
-  Widget _buildTimelineItem(VisitRecord visit, bool isLast) {
+  Widget _buildTimelineItem(
+      BuildContext context, VisitRecord visit, bool isLast) {
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -448,58 +451,84 @@ class HealthTimelineView extends StatelessWidget {
         Expanded(
           child: Card(
             margin: const EdgeInsets.only(bottom: 16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        visit.visitType ?? 'Visit',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
-                      ),
-                      if (visit.startDate != null)
-                        Text(
-                          _formatDate(visit.startDate!),
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 12,
+            child: InkWell(
+              onTap: () {
+                Navigator.of(context).push(
+                  MaterialPageRoute(
+                    builder: (context) => PatientHistoryScreen(visit: visit),
+                  ),
+                );
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            visit.visitType ?? 'Visit',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
                           ),
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 8),
-                  if (visit.location?.isNotEmpty == true)
-                    Row(
-                      children: [
-                        const Icon(Icons.location_on,
-                            size: 16, color: Colors.grey),
-                        const SizedBox(width: 4),
-                        Text(
-                          visit.location!,
-                          style: const TextStyle(color: Colors.grey),
+                        if (visit.startDate != null)
+                          Text(
+                            _formatDate(visit.startDate!),
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        const SizedBox(width: 8),
+                        const Icon(
+                          Icons.arrow_forward_ios,
+                          color: Colors.grey,
+                          size: 16,
                         ),
                       ],
                     ),
-                  if (visit.encounters?.isNotEmpty == true) ...[
-                    const SizedBox(height: 12),
-                    const Text(
-                      'Encounters:',
-                      style: TextStyle(fontWeight: FontWeight.w600),
-                    ),
-                    const SizedBox(height: 8),
-                    Column(
-                      children: visit.encounters!
-                          .map((encounter) => _buildEncounterItem(encounter))
-                          .toList(),
-                    ),
+                    if (visit.location?.isNotEmpty == true) ...[
+                      const SizedBox(height: 8),
+                      Row(
+                        children: [
+                          const Icon(Icons.location_on,
+                              size: 16, color: Colors.grey),
+                          const SizedBox(width: 4),
+                          Text(
+                            visit.location!,
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ],
+                      ),
+                    ],
+                    if (visit.status?.isNotEmpty == true) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 8, vertical: 4),
+                        decoration: BoxDecoration(
+                          color: _getStatusColor(visit.status)
+                              .withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Text(
+                          visit.status!,
+                          style: TextStyle(
+                            color: _getStatusColor(visit.status),
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
-                ],
+                ),
               ),
             ),
           ),
@@ -508,62 +537,22 @@ class HealthTimelineView extends StatelessWidget {
     );
   }
 
-  Widget _buildEncounterItem(EncounterRecord encounter) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.medical_services, size: 16, color: Colors.blue),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  encounter.encounterType ?? 'Encounter',
-                  style: const TextStyle(fontWeight: FontWeight.w600),
-                ),
-              ),
-            ],
-          ),
-          if (encounter.diagnoses?.isNotEmpty == true) ...[
-            const SizedBox(height: 8),
-            const Text('Diagnoses:',
-                style: TextStyle(fontWeight: FontWeight.w500)),
-            ...encounter.diagnoses!.map((diagnosis) => Padding(
-                  padding: const EdgeInsets.only(left: 16, top: 4),
-                  child: Text('• $diagnosis'),
-                )),
-          ],
-          if (encounter.prescriptions?.isNotEmpty == true) ...[
-            const SizedBox(height: 8),
-            const Text('Prescriptions:',
-                style: TextStyle(fontWeight: FontWeight.w500)),
-            ...encounter.prescriptions!.map((prescription) => Padding(
-                  padding: const EdgeInsets.only(left: 16, top: 4),
-                  child: Text(
-                      '• ${prescription.conceptDisplay ?? prescription.concept ?? 'Unknown medication'}'),
-                )),
-          ],
-          if (encounter.observations?.isNotEmpty == true) ...[
-            const SizedBox(height: 8),
-            const Text('Observations:',
-                style: TextStyle(fontWeight: FontWeight.w500)),
-            ...encounter.observations!.map((observation) => Padding(
-                  padding: const EdgeInsets.only(left: 16, top: 4),
-                  child: Text(
-                      '• ${observation.conceptDisplay ?? observation.concept ?? 'Unknown'}: ${observation.value ?? observation.valueDisplay ?? 'N/A'}'),
-                )),
-          ],
-        ],
-      ),
-    );
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'completed':
+      case 'finished':
+        return Colors.green;
+      case 'in progress':
+      case 'ongoing':
+        return Colors.orange;
+      case 'cancelled':
+      case 'canceled':
+        return Colors.red;
+      case 'scheduled':
+        return Colors.blue;
+      default:
+        return Colors.grey;
+    }
   }
 
   Color _getVisitTypeColor(String? visitType) {
@@ -665,62 +654,154 @@ class VisitsListView extends StatelessWidget {
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
-      child: ExpansionTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: _getVisitTypeColor(visit.visitType).withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(
-            _getVisitTypeIcon(visit.visitType),
-            color: _getVisitTypeColor(visit.visitType),
-          ),
-        ),
-        title: Text(
-          visit.visitType ?? 'Visit',
-          style: const TextStyle(fontWeight: FontWeight.bold),
-        ),
-        subtitle: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (visit.startDate != null)
-              Text(
-                _formatDate(visit.startDate!),
-                style: const TextStyle(color: Colors.grey),
+      child: InkWell(
+        onTap: () {
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (context) => PatientHistoryScreen(visit: visit),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: _getVisitTypeColor(visit.visitType)
+                          .withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Icon(
+                      _getVisitTypeIcon(visit.visitType),
+                      color: _getVisitTypeColor(visit.visitType),
+                      size: 24,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          visit.visitType ?? 'Visit',
+                          style: const TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                          ),
+                        ),
+                        if (visit.location?.isNotEmpty == true)
+                          Text(
+                            '📍 ${visit.location!}',
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 14,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                  const Icon(
+                    Icons.arrow_forward_ios,
+                    color: Colors.grey,
+                    size: 16,
+                  ),
+                ],
               ),
-            if (visit.location?.isNotEmpty == true)
-              Text(
-                visit.location!,
-                style: const TextStyle(color: Colors.grey),
+              const SizedBox(height: 12),
+
+              // Date information
+              Row(
+                children: [
+                  if (visit.startDatetime != null || visit.startDate != null)
+                    Expanded(
+                      child: _buildDateChip(
+                        'Started',
+                        visit.startDatetime ?? visit.startDate!,
+                        Icons.play_arrow,
+                        Colors.green,
+                      ),
+                    ),
+                  if (visit.stopDatetime != null || visit.endDate != null) ...[
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: _buildDateChip(
+                        'Ended',
+                        visit.stopDatetime ?? visit.endDate!,
+                        Icons.stop,
+                        Colors.red,
+                      ),
+                    ),
+                  ],
+                ],
               ),
-          ],
+
+              // Status badge
+              if (visit.status?.isNotEmpty == true)
+                Container(
+                  margin: const EdgeInsets.only(top: 12),
+                  child: Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color:
+                          _getStatusColor(visit.status).withValues(alpha: 0.1),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Text(
+                      visit.status!,
+                      style: TextStyle(
+                        color: _getStatusColor(visit.status),
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDateChip(
+      String label, String dateTime, IconData icon, Color color) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(16),
+          Icon(icon, color: color, size: 14),
+          const SizedBox(width: 6),
+          Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (visit.encounters?.isNotEmpty == true) ...[
-                  const Text(
-                    'Encounters',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
+                Text(
+                  label,
+                  style: TextStyle(
+                    color: color,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
                   ),
-                  const SizedBox(height: 8),
-                  Column(
-                    children: visit.encounters!
-                        .map((encounter) => _buildEncounterDetails(encounter))
-                        .toList(),
+                ),
+                Text(
+                  _formatDate(dateTime),
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
                   ),
-                ] else
-                  const Text(
-                    'No encounter details available',
-                    style: TextStyle(color: Colors.grey),
-                  ),
+                ),
               ],
             ),
           ),
@@ -729,97 +810,22 @@ class VisitsListView extends StatelessWidget {
     );
   }
 
-  Widget _buildEncounterDetails(EncounterRecord encounter) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[200]!),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            encounter.encounterType ?? 'Encounter',
-            style: const TextStyle(
-              fontWeight: FontWeight.w600,
-              fontSize: 14,
-            ),
-          ),
-          const SizedBox(height: 8),
-          if (encounter.diagnoses?.isNotEmpty == true) ...[
-            _buildSectionHeader('Diagnoses', Icons.assignment),
-            ...encounter.diagnoses!.map((diagnosis) => _buildListItem(
-                  diagnosis,
-                  null,
-                )),
-            const SizedBox(height: 8),
-          ],
-          if (encounter.prescriptions?.isNotEmpty == true) ...[
-            _buildSectionHeader('Prescriptions', Icons.medication),
-            ...encounter.prescriptions!.map((prescription) => _buildListItem(
-                  prescription.conceptDisplay ??
-                      prescription.concept ??
-                      'Unknown medication',
-                  prescription.dosage,
-                )),
-            const SizedBox(height: 8),
-          ],
-          if (encounter.observations?.isNotEmpty == true) ...[
-            _buildSectionHeader('Observations', Icons.monitor_heart),
-            ...encounter.observations!.map((observation) => _buildListItem(
-                  '${observation.conceptDisplay ?? observation.concept ?? 'Unknown'}: ${observation.value ?? observation.valueDisplay ?? 'N/A'}',
-                  observation.units,
-                )),
-          ],
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSectionHeader(String title, IconData icon) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 4),
-      child: Row(
-        children: [
-          Icon(icon, size: 16, color: Colors.grey[600]),
-          const SizedBox(width: 4),
-          Text(
-            title,
-            style: TextStyle(
-              fontWeight: FontWeight.w500,
-              fontSize: 12,
-              color: Colors.grey[600],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildListItem(String primary, String? secondary) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 20, bottom: 2),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            '• $primary',
-            style: const TextStyle(fontSize: 13),
-          ),
-          if (secondary?.isNotEmpty == true)
-            Text(
-              '  $secondary',
-              style: TextStyle(
-                fontSize: 11,
-                color: Colors.grey[600],
-              ),
-            ),
-        ],
-      ),
-    );
+  Color _getStatusColor(String? status) {
+    switch (status?.toLowerCase()) {
+      case 'active':
+      case 'ongoing':
+        return Colors.green;
+      case 'completed':
+      case 'finished':
+        return Colors.blue;
+      case 'cancelled':
+      case 'canceled':
+        return Colors.red;
+      case 'scheduled':
+        return Colors.orange;
+      default:
+        return Colors.grey;
+    }
   }
 
   Color _getVisitTypeColor(String? visitType) {
@@ -850,13 +856,13 @@ class VisitsListView extends StatelessWidget {
       case 'emergency':
         return Icons.emergency;
       case 'specialist':
-        return Icons.medical_services;
+        return Icons.person_search;
       case 'laboratory':
-        return Icons.science;
+        return Icons.biotech;
       case 'consultation':
         return Icons.chat;
       default:
-        return Icons.healing;
+        return Icons.medical_services;
     }
   }
 
