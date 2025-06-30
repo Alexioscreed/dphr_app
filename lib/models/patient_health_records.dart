@@ -188,6 +188,8 @@ class EncounterRecord {
   final List<ObservationRecord>? observations;
   final List<OrderRecord>? prescriptions;
   final String? clinicalNotes;
+  final String?
+      formattedPrescriptions; // New field for formatted prescription text
   final String? status;
 
   EncounterRecord({
@@ -202,6 +204,7 @@ class EncounterRecord {
     this.observations,
     this.prescriptions,
     this.clinicalNotes,
+    this.formattedPrescriptions,
     this.status,
   });
   factory EncounterRecord.fromJson(Map<String, dynamic> json) {
@@ -227,6 +230,7 @@ class EncounterRecord {
               .toList()
           : null,
       clinicalNotes: json['clinicalNotes'],
+      formattedPrescriptions: json['formattedPrescriptions'],
       status: json['status'],
     );
   }
@@ -243,6 +247,7 @@ class EncounterRecord {
       'observations': observations?.map((obs) => obs.toJson()).toList(),
       'prescriptions': prescriptions?.map((pres) => pres.toJson()).toList(),
       'clinicalNotes': clinicalNotes,
+      'formattedPrescriptions': formattedPrescriptions,
       'status': status,
     };
   }

@@ -176,6 +176,57 @@ class PatientHistoryScreen extends StatelessWidget {
   }
 
   Widget _buildMedicationsSection(BuildContext context) {
+    // Collect all formatted prescriptions from encounters
+    List<String> formattedPrescriptions = [];
+
+    if (visit.encounters != null) {
+      for (final encounter in visit.encounters!) {
+        if (encounter.formattedPrescriptions != null &&
+            encounter.formattedPrescriptions!.isNotEmpty) {
+          formattedPrescriptions.add(encounter.formattedPrescriptions!);
+        }
+      }
+    }
+
+    // If no formatted prescriptions available, fall back to individual medications
+    if (formattedPrescriptions.isEmpty) {
+      return _buildIndividualMedicationsSection(context);
+    }
+
+    return _buildSection(
+      'Medications & Prescriptions',
+      Icons.medication,
+      [
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.blue.withValues(alpha: 0.05),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: formattedPrescriptions.map((prescriptionText) {
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: Text(
+                  prescriptionText,
+                  style: const TextStyle(
+                    fontSize: 14,
+                    height: 1.5,
+                    fontFamily: 'monospace',
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildIndividualMedicationsSection(BuildContext context) {
     final medications = <Map<String, dynamic>>[];
     // Extract medications from all encounters
     if (visit.encounters != null) {

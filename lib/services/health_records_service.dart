@@ -344,4 +344,61 @@ class HealthRecordsService {
 
     return observations;
   }
+
+  /// Get formatted visit summary from backend
+  Future<Map<String, dynamic>> getFormattedVisitSummary(
+      String patientUuid) async {
+    try {
+      debugPrint('Fetching formatted visit summary for patient: $patientUuid');
+      debugPrint(
+          'API URL: ${_apiService.baseUrl}/visits/patient/$patientUuid/formatted');
+
+      final response =
+          await _apiService.get('visits/patient/$patientUuid/formatted');
+
+      if (response != null && response is Map<String, dynamic>) {
+        debugPrint(
+            'Formatted visit summary response received: ${response.toString()}');
+        return response;
+      } else {
+        debugPrint('Invalid response format: $response');
+        throw Exception('Invalid response format from formatted visit API');
+      }
+    } catch (e) {
+      debugPrint('Error fetching formatted visit summary: $e');
+      throw Exception('Failed to fetch formatted visit summary: $e');
+    }
+  }
+
+  /// Get single formatted visit by visit UUID
+  Future<String> getFormattedVisitByUuid(
+      String patientUuid, String visitUuid) async {
+    try {
+      debugPrint(
+          'Fetching formatted visit for patient: $patientUuid, visit: $visitUuid');
+
+      final response =
+          await _apiService.get('visits/patient/$patientUuid/formatted');
+
+      if (response != null && response is Map<String, dynamic>) {
+        final formattedVisits = response['formattedVisits'] as List?;
+        if (formattedVisits != null) {
+          // Find the specific visit by UUID
+          final visit = formattedVisits.firstWhere(
+            (v) => v['visitUuid'] == visitUuid,
+            orElse: () => null,
+          );
+
+          if (visit != null && visit['formattedSummary'] != null) {
+            return visit['formattedSummary'] as String;
+          }
+        }
+      }
+
+      return 'Visit summary not available';
+    } catch (e) {
+      debugPrint('Error fetching formatted visit by UUID: $e');
+      return 'Error loading visit summary';
+    }
+  }
 }
