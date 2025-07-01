@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:provider/provider.dart';
 import '../../models/patient_health_records.dart';
+import '../../services/pdf_service.dart';
+import '../../providers/visits_health_provider.dart';
 
-class PatientHistoryScreen extends StatelessWidget {
+class PatientHistoryScreen extends StatefulWidget {
   final VisitRecord visit;
 
   const PatientHistoryScreen({
@@ -11,12 +14,81 @@ class PatientHistoryScreen extends StatelessWidget {
   }) : super(key: key);
 
   @override
+  State<PatientHistoryScreen> createState() => _PatientHistoryScreenState();
+}
+
+class _PatientHistoryScreenState extends State<PatientHistoryScreen> {
+  bool _isPrinting = false;
+
+  Future<void> _printVisitSummary() async {
+    try {
+      setState(() {
+        _isPrinting = true;
+      });
+
+      // Get the visits provider to access patient demographics
+      final visitsProvider =
+          Provider.of<VisitsHealthProvider>(context, listen: false);
+
+      // Get the current patient demographics
+      final demographics = visitsProvider.healthRecords?.demographics;
+
+      if (demographics == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Patient information not available')),
+        );
+        return;
+      }
+
+      // Generate PDF
+      final pdfService = PdfService();
+      final pdfPath = await pdfService.generateVisitPdf(
+        visit: widget.visit,
+        demographics: demographics,
+        appName: 'DPHR - Digital Personal Health Records',
+      );
+
+      // Open the PDF
+      await pdfService.openPdf(pdfPath);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('PDF saved to: $pdfPath')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error generating PDF: $e')),
+      );
+    } finally {
+      setState(() {
+        _isPrinting = false;
+      });
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(visit.visitType ?? 'Patient History'),
+        title: Text(widget.visit.visitType ?? 'Patient History'),
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
+        actions: [
+          _isPrinting
+              ? Container(
+                  margin: const EdgeInsets.all(16),
+                  width: 24,
+                  height: 24,
+                  child: const CircularProgressIndicator(
+                    color: Colors.white,
+                    strokeWidth: 3,
+                  ),
+                )
+              : IconButton(
+                  icon: const Icon(Icons.print),
+                  tooltip: 'Print visit summary',
+                  onPressed: _printVisitSummary,
+                ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
@@ -49,13 +121,13 @@ class PatientHistoryScreen extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: _getVisitTypeColor(visit.visitType)
-                        .withValues(alpha: 0.1),
+                    color: _getVisitTypeColor(widget.visit.visitType)
+                        .withOpacity(0.1),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Icon(
-                    _getVisitTypeIcon(visit.visitType),
-                    color: _getVisitTypeColor(visit.visitType),
+                    _getVisitTypeIcon(widget.visit.visitType),
+                    color: _getVisitTypeColor(widget.visit.visitType),
                     size: 24,
                   ),
                 ),
@@ -65,15 +137,15 @@ class PatientHistoryScreen extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        visit.visitType ?? 'Visit',
+                        widget.visit.visitType ?? 'Visit',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 20,
                         ),
                       ),
-                      if (visit.location?.isNotEmpty == true)
+                      if (widget.visit.location?.isNotEmpty == true)
                         Text(
-                          '📍 ${visit.location!}',
+                          '📍 ${widget.visit.location!}',
                           style: const TextStyle(
                             color: Colors.grey,
                             fontSize: 14,
@@ -87,21 +159,23 @@ class PatientHistoryScreen extends StatelessWidget {
             const SizedBox(height: 16),
             Row(
               children: [
-                if (visit.startDatetime != null || visit.startDate != null)
+                if (widget.visit.startDatetime != null ||
+                    widget.visit.startDate != null)
                   Expanded(
                     child: _buildDateInfo(
                       'Started',
-                      visit.startDatetime ?? visit.startDate!,
+                      widget.visit.startDatetime ?? widget.visit.startDate!,
                       Icons.play_arrow,
                       Colors.green,
                     ),
                   ),
-                if (visit.stopDatetime != null || visit.endDate != null) ...[
+                if (widget.visit.stopDatetime != null ||
+                    widget.visit.endDate != null) ...[
                   const SizedBox(width: 16),
                   Expanded(
                     child: _buildDateInfo(
                       'Ended',
-                      visit.stopDatetime ?? visit.endDate!,
+                      widget.visit.stopDatetime ?? widget.visit.endDate!,
                       Icons.stop,
                       Colors.red,
                     ),
@@ -109,19 +183,19 @@ class PatientHistoryScreen extends StatelessWidget {
                 ],
               ],
             ),
-            if (visit.status?.isNotEmpty == true) ...[
+            if (widget.visit.status?.isNotEmpty == true) ...[
               const SizedBox(height: 16),
               Container(
                 padding:
                     const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                 decoration: BoxDecoration(
-                  color: _getStatusColor(visit.status).withValues(alpha: 0.1),
+                  color: _getStatusColor(widget.visit.status).withOpacity(0.1),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: Text(
-                  'Status: ${visit.status!}',
+                  'Status: ${widget.visit.status!}',
                   style: TextStyle(
-                    color: _getStatusColor(visit.status),
+                    color: _getStatusColor(widget.visit.status),
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
                   ),
@@ -139,7 +213,7 @@ class PatientHistoryScreen extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -177,8 +251,8 @@ class PatientHistoryScreen extends StatelessWidget {
     // Collect all formatted prescriptions from encounters
     List<String> formattedPrescriptions = [];
 
-    if (visit.encounters != null) {
-      for (final encounter in visit.encounters!) {
+    if (widget.visit.encounters != null) {
+      for (final encounter in widget.visit.encounters!) {
         if (encounter.formattedPrescriptions != null &&
             encounter.formattedPrescriptions!.isNotEmpty) {
           formattedPrescriptions.add(encounter.formattedPrescriptions!);
@@ -199,9 +273,9 @@ class PatientHistoryScreen extends StatelessWidget {
           width: double.infinity,
           padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: Colors.blue.withValues(alpha: 0.05),
+            color: Colors.blue.withOpacity(0.05),
             borderRadius: BorderRadius.circular(8),
-            border: Border.all(color: Colors.blue.withValues(alpha: 0.2)),
+            border: Border.all(color: Colors.blue.withOpacity(0.2)),
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -227,8 +301,8 @@ class PatientHistoryScreen extends StatelessWidget {
   Widget _buildIndividualMedicationsSection(BuildContext context) {
     final medications = <Map<String, dynamic>>[];
     // Extract medications from all encounters
-    if (visit.encounters != null) {
-      for (final encounter in visit.encounters!) {
+    if (widget.visit.encounters != null) {
+      for (final encounter in widget.visit.encounters!) {
         if (encounter.prescriptions != null) {
           for (final prescription in encounter.prescriptions!) {
             // Build medication name with drug strength if available
@@ -333,8 +407,8 @@ class PatientHistoryScreen extends StatelessWidget {
   Widget _buildDiagnosesSection(BuildContext context) {
     final diagnoses = <String>[];
     // Extract diagnoses from all encounters
-    if (visit.encounters != null) {
-      for (final encounter in visit.encounters!) {
+    if (widget.visit.encounters != null) {
+      for (final encounter in widget.visit.encounters!) {
         if (encounter.diagnoses != null) {
           diagnoses.addAll(encounter.diagnoses!);
         }
@@ -368,7 +442,7 @@ class PatientHistoryScreen extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(6),
               decoration: BoxDecoration(
-                color: Colors.red.withValues(alpha: 0.1),
+                color: Colors.red.withOpacity(0.1),
                 shape: BoxShape.circle,
               ),
               child:

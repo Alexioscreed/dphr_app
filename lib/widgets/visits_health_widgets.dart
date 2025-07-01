@@ -644,8 +644,7 @@ class HealthTimelineView extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: _getStatusColor(visit.status)
-                              .withValues(alpha: 0.1),
+                          color: _getStatusColor(visit.status).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: Text(
@@ -851,8 +850,8 @@ class VisitsListView extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: _getVisitTypeColor(visit.visitType)
-                          .withValues(alpha: 0.1),
+                      color:
+                          _getVisitTypeColor(visit.visitType).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
@@ -927,8 +926,7 @@ class VisitsListView extends StatelessWidget {
                     padding:
                         const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
-                      color:
-                          _getStatusColor(visit.status).withValues(alpha: 0.1),
+                      color: _getStatusColor(visit.status).withOpacity(0.1),
                       borderRadius: BorderRadius.circular(16),
                     ),
                     child: Text(
@@ -953,7 +951,7 @@ class VisitsListView extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(8),
       decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.1),
+        color: color.withOpacity(0.1),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
