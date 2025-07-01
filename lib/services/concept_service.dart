@@ -131,29 +131,34 @@ class ConceptService {
     );
   }
 
-  /// Get KISOMA's medical records with concept filtering
-  Future<List<Encounter>> getKisomaMedicalRecords({
+  /// Get patient's medical records with concept filtering
+  Future<List<Encounter>> getPatientMedicalRecords({
+    required String patientUuid,
     String? conceptUuid,
     String? fromDate,
   }) async {
-    const kisomaPatientUuid = '5c5e6253-1489-4d58-ba68-ab90498076bd';
-    
     return getPatientEncountersWithConcept(
-      patientUuid: kisomaPatientUuid,
+      patientUuid: patientUuid,
       conceptUuid: conceptUuid,
       fromDate: fromDate ?? '2016-10-08',
     );
   }
+
   /// Helper method to parse encounter data
   Encounter _parseEncounter(Map<String, dynamic> data) {
     return Encounter(
       id: data['id']?.toString(),
       patientId: int.tryParse(data['patientId']?.toString() ?? '0') ?? 0,
-      doctorId: data['doctorId'] != null ? int.tryParse(data['doctorId'].toString()) : null,
+      doctorId: data['doctorId'] != null
+          ? int.tryParse(data['doctorId'].toString())
+          : null,
       encounterType: data['encounterType']?.toString() ?? 'Unknown',
-      encounterDateTime: data['encounterDate'] != null || data['encounterDateTime'] != null
-          ? DateTime.tryParse(data['encounterDate'] ?? data['encounterDateTime']) ?? DateTime.now()
-          : DateTime.now(),
+      encounterDateTime:
+          data['encounterDate'] != null || data['encounterDateTime'] != null
+              ? DateTime.tryParse(
+                      data['encounterDate'] ?? data['encounterDateTime']) ??
+                  DateTime.now()
+              : DateTime.now(),
       location: data['location']?.toString() ?? 'Unknown',
       provider: data['provider']?.toString() ?? 'Unknown',
       notes: data['notes']?.toString() ?? '',

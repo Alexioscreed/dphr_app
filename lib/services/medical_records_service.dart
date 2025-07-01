@@ -55,31 +55,33 @@ class MedicalRecordsService {
       throw Exception('Failed to search medical concepts: $e');
     }
   }
+
   // UPDATED: Get medical records with concept integration (iCare compatible)
   Future<Map<String, dynamic>> getMedicalRecordsByPatientUuid(
       String patientUuid) async {
     try {
-      debugPrint('Fetching medical records for patient: $patientUuid using concept-aware endpoints');
-      
-      // Try the new concept-aware encounter endpoint first
-      final encounterResponse = await _apiService.get('encounters/icare/patient/$patientUuid');
+      debugPrint(
+          'Fetching medical records for patient: $patientUuid using concept-aware endpoints');
 
-      if (encounterResponse != null && 
-          encounterResponse is Map<String, dynamic> && 
+      // Try the new concept-aware encounter endpoint first
+      final encounterResponse =
+          await _apiService.get('encounters/icare/patient/$patientUuid');
+
+      if (encounterResponse != null &&
+          encounterResponse is Map<String, dynamic> &&
           encounterResponse['success'] == true) {
-        
         // Convert the concept-aware response to the expected format
         final encounters = encounterResponse['data'] as List? ?? [];
-        
+
         return {
           'success': true,
           'patient': {
             'patientUuid': patientUuid,
             'id': patientUuid,
             'mrn': 'Unknown', // Will be updated when patient data is available
-            'firstName': 'KISOMA',
-            'lastName': 'MICHAEL MUZIRAI',
-            'email': 'kisoma.muzirai@gmail.com',
+            'firstName': 'Unknown',
+            'lastName': 'Patient',
+            'email': 'unknown@patient.com',
           },
           'encounters': encounters,
           'totalCount': encounters.length,
@@ -87,13 +89,16 @@ class MedicalRecordsService {
         };
       } else {
         // Fallback to original endpoint if concept endpoint fails
-        debugPrint('Concept-aware endpoint failed, falling back to original endpoint');
-        final response = await _apiService.get('medical-records/patient/$patientUuid');
+        debugPrint(
+            'Concept-aware endpoint failed, falling back to original endpoint');
+        final response =
+            await _apiService.get('medical-records/patient/$patientUuid');
 
         if (response != null && response is Map<String, dynamic>) {
           return response;
         } else {
-          debugPrint('Unexpected response format for medical records: $response');
+          debugPrint(
+              'Unexpected response format for medical records: $response');
           return {};
         }
       }

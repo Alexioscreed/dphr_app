@@ -60,19 +60,30 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
     }
   }
 
-  Future<void> _testKisomaEncounters({String? conceptUuid}) async {
+  Future<void> _testCurrentUserEncounters({String? conceptUuid}) async {
     setState(() {
       _loading = true;
       _status = conceptUuid != null
-          ? 'Fetching KISOMA encounters with concept...'
-          : 'Fetching KISOMA encounters without concept...';
+          ? 'Fetching patient encounters with concept...'
+          : 'Fetching patient encounters without concept...';
     });
 
     try {
-      const kisomaPatientUuid = '5c5e6253-1489-4d58-ba68-ab90498076bd';
-      
+      // Get the current user's patient UUID from the auth service
+      final authService = Provider.of<AuthService>(context, listen: false);
+      final currentUser = authService.currentUser;
+
+      if (currentUser?.patientUuid == null ||
+          currentUser?.patientUuid?.isEmpty == true) {
+        setState(() {
+          _status = 'Error: No patient UUID found for current user';
+          _loading = false;
+        });
+        return;
+      }
+
       final encounters = await _conceptService.getPatientEncountersWithConcept(
-        patientUuid: kisomaPatientUuid,
+        patientUuid: currentUser!.patientUuid!,
         conceptUuid: conceptUuid,
         fromDate: '2016-10-08',
       );
@@ -115,20 +126,30 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Text(
-                      'KISOMA MICHAEL MUZIRAI - Concept Integration Test',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
+                    Consumer<AuthService>(
+                      builder: (context, authService, child) {
+                        final currentUser = authService.currentUser;
+                        return Text(
+                          '${currentUser?.name ?? 'Unknown User'} - Concept Integration Test',
+                          style: const TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Patient UUID: 5c5e6253-1489-4d58-ba68-ab90498076bd',
-                      style: TextStyle(
-                        fontSize: 14,
-                        color: Colors.grey[600],
-                      ),
+                    Consumer<AuthService>(
+                      builder: (context, authService, child) {
+                        final currentUser = authService.currentUser;
+                        return Text(
+                          'Patient UUID: ${currentUser?.patientUuid ?? 'Not Available'}',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        );
+                      },
                     ),
                     const SizedBox(height: 8),
                     Text(
@@ -161,7 +182,6 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
                       ),
                     ),
                     const SizedBox(height: 16),
-                    
                     Row(
                       children: [
                         Expanded(
@@ -173,13 +193,14 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
                         const SizedBox(width: 8),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: _loading ? null : () => _testKisomaEncounters(),
+                            onPressed: _loading
+                                ? null
+                                : () => _testCurrentUserEncounters(),
                             child: const Text('Get All Encounters'),
                           ),
                         ),
                       ],
                     ),
-
                     if (_selectedConcept != null) ...[
                       const SizedBox(height: 8),
                       SizedBox(
@@ -191,9 +212,10 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
                           ),
                           onPressed: _loading
                               ? null
-                              : () => _testKisomaEncounters(
+                              : () => _testCurrentUserEncounters(
                                   conceptUuid: _selectedConcept!.uuid),
-                          child: Text('Get Encounters with ${_selectedConcept!.display}'),
+                          child: Text(
+                              'Get Encounters with ${_selectedConcept!.display}'),
                         ),
                       ),
                     ],
@@ -221,17 +243,17 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
                       ),
                       const SizedBox(height: 8),
                       ...(_concepts.map((concept) => ListTile(
-                        title: Text(concept.display),
-                        subtitle: Text('UUID: ${concept.uuid}'),
-                        trailing: _selectedConcept?.uuid == concept.uuid
-                            ? const Icon(Icons.check, color: Colors.green)
-                            : null,
-                        onTap: () {
-                          setState(() {
-                            _selectedConcept = concept;
-                          });
-                        },
-                      ))),
+                            title: Text(concept.display),
+                            subtitle: Text('UUID: ${concept.uuid}'),
+                            trailing: _selectedConcept?.uuid == concept.uuid
+                                ? const Icon(Icons.check, color: Colors.green)
+                                : null,
+                            onTap: () {
+                              setState(() {
+                                _selectedConcept = concept;
+                              });
+                            },
+                          ))),
                     ],
                   ),
                 ),
@@ -256,21 +278,24 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
                       ),
                       const SizedBox(height: 8),
                       ...(_encounters.take(5).map((encounter) => Card(
-                        color: Colors.green[50],
-                        child: ListTile(
-                          title: Text(encounter.encounterType ?? 'Unknown Type'),                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text('Date: ${encounter.encounterDateTime?.toString() ?? 'Unknown'}'),
-                              if (encounter.provider != null)
-                                Text('Provider: ${encounter.provider}'),
-                              if (encounter.diagnosis != null)
-                                Text('Diagnosis: ${encounter.diagnosis}'),
-                            ],
-                          ),
-                          isThreeLine: true,
-                        ),
-                      ))),
+                            color: Colors.green[50],
+                            child: ListTile(
+                              title: Text(
+                                  encounter.encounterType ?? 'Unknown Type'),
+                              subtitle: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                      'Date: ${encounter.encounterDateTime?.toString() ?? 'Unknown'}'),
+                                  if (encounter.provider != null)
+                                    Text('Provider: ${encounter.provider}'),
+                                  if (encounter.diagnosis != null)
+                                    Text('Diagnosis: ${encounter.diagnosis}'),
+                                ],
+                              ),
+                              isThreeLine: true,
+                            ),
+                          ))),
                       if (_encounters.length > 5)
                         Padding(
                           padding: const EdgeInsets.all(8.0),
