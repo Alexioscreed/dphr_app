@@ -20,12 +20,12 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
   String _selectedFilter = 'All';
   final List<String> _filters = [
     'All',
-    'Outpatient',
-    'Inpatient',
-    'Emergency',
-    'Specialist',
-    'Laboratory',
-    'Consultation'
+    'This Month',
+    'Last 3 Months',
+    'Last 6 Months',
+    'This Year',
+    'Last Year',
+    'Last 2 Years'
   ];
   String _selectedView = 'visits'; // 'visits', 'timeline', 'summary'
 
@@ -341,10 +341,12 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
       case 'summary':
         return HealthSummaryView(
           healthRecords: healthRecords,
+          selectedFilter: _selectedFilter,
         );
       case 'timeline':
         return HealthTimelineView(
           healthRecords: healthRecords,
+          selectedFilter: _selectedFilter,
         );
       case 'visits':
       default:

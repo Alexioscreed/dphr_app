@@ -113,53 +113,116 @@ class DemographicsCard extends StatelessWidget {
 
 class HealthSummaryView extends StatelessWidget {
   final PatientHealthRecords healthRecords;
+  final String selectedFilter;
 
   const HealthSummaryView({
     Key? key,
     required this.healthRecords,
+    required this.selectedFilter,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
+    final filteredVisits = _filterVisits();
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           _buildSummaryCard(
-            'Total Visits',
-            (healthRecords.visits?.length ?? 0).toString(),
+            selectedFilter == 'All' ? 'Total Visits' : 'Filtered Visits',
+            filteredVisits.length.toString(),
             Icons.local_hospital,
             Colors.blue,
           ),
           const SizedBox(height: 12),
           _buildSummaryCard(
-            'Total Encounters',
-            _getTotalEncounters().toString(),
+            selectedFilter == 'All'
+                ? 'Total Encounters'
+                : 'Filtered Encounters',
+            _getTotalEncounters(filteredVisits).toString(),
             Icons.medical_services,
             Colors.green,
           ),
           const SizedBox(height: 12),
           _buildSummaryCard(
-            'Total Prescriptions',
-            _getTotalPrescriptions().toString(),
+            selectedFilter == 'All'
+                ? 'Total Prescriptions'
+                : 'Filtered Prescriptions',
+            _getTotalPrescriptions(filteredVisits).toString(),
             Icons.medication,
             Colors.orange,
           ),
           const SizedBox(height: 12),
           _buildSummaryCard(
-            'Total Diagnoses',
-            _getTotalDiagnoses().toString(),
+            selectedFilter == 'All' ? 'Total Diagnoses' : 'Filtered Diagnoses',
+            _getTotalDiagnoses(filteredVisits).toString(),
             Icons.assignment,
             Colors.red,
           ),
           const SizedBox(height: 24),
-          _buildRecentActivity(),
+          _buildRecentActivity(filteredVisits),
           const SizedBox(height: 24),
-          _buildVisitTypesChart(),
+          _buildVisitTypesChart(filteredVisits),
         ],
       ),
     );
+  }
+
+  List<VisitRecord> _filterVisits() {
+    final visits = healthRecords.visits ?? [];
+
+    if (selectedFilter == 'All') {
+      return visits;
+    }
+
+    final now = DateTime.now();
+    DateTime filterDate;
+
+    switch (selectedFilter) {
+      case 'This Month':
+        filterDate = DateTime(now.year, now.month, 1);
+        break;
+      case 'Last 3 Months':
+        filterDate = DateTime(now.year, now.month - 3, 1);
+        break;
+      case 'Last 6 Months':
+        filterDate = DateTime(now.year, now.month - 6, 1);
+        break;
+      case 'This Year':
+        filterDate = DateTime(now.year, 1, 1);
+        break;
+      case 'Last Year':
+        filterDate = DateTime(now.year - 1, 1, 1);
+        break;
+      case 'Last 2 Years':
+        filterDate = DateTime(now.year - 2, 1, 1);
+        break;
+      default:
+        return visits;
+    }
+
+    return visits.where((visit) {
+      final visitDate = _parseVisitDate(visit);
+      if (visitDate == null) return false;
+      return visitDate.isAfter(filterDate) ||
+          visitDate.isAtSameMomentAs(filterDate);
+    }).toList();
+  }
+
+  DateTime? _parseVisitDate(VisitRecord visit) {
+    try {
+      // Try to parse startDatetime first, then startDate
+      if (visit.startDatetime != null && visit.startDatetime!.isNotEmpty) {
+        return DateTime.parse(visit.startDatetime!);
+      } else if (visit.startDate != null && visit.startDate!.isNotEmpty) {
+        return DateTime.parse(visit.startDate!);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Widget _buildSummaryCard(
@@ -208,8 +271,8 @@ class HealthSummaryView extends StatelessWidget {
     );
   }
 
-  Widget _buildRecentActivity() {
-    final recentVisits = healthRecords.visits?.take(3).toList() ?? [];
+  Widget _buildRecentActivity(List<VisitRecord> visits) {
+    final recentVisits = visits.take(3).toList();
 
     return Card(
       elevation: 2,
@@ -222,9 +285,11 @@ class HealthSummaryView extends StatelessWidget {
               children: [
                 Icon(Icons.access_time, color: Colors.blue),
                 const SizedBox(width: 8),
-                const Text(
-                  'Recent Activity',
-                  style: TextStyle(
+                Text(
+                  selectedFilter == 'All'
+                      ? 'Recent Activity'
+                      : 'Recent Activity (Filtered)',
+                  style: const TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
                   ),
@@ -284,9 +349,9 @@ class HealthSummaryView extends StatelessWidget {
     );
   }
 
-  Widget _buildVisitTypesChart() {
+  Widget _buildVisitTypesChart(List<VisitRecord> visits) {
     final visitTypes = <String, int>{};
-    for (final visit in healthRecords.visits ?? []) {
+    for (final visit in visits) {
       final type = visit.visitType ?? 'Unknown';
       visitTypes[type] = (visitTypes[type] ?? 0) + 1;
     }
@@ -298,9 +363,11 @@ class HealthSummaryView extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
-              'Visit Types Distribution',
-              style: TextStyle(
+            Text(
+              selectedFilter == 'All'
+                  ? 'Visit Types Distribution'
+                  : 'Visit Types Distribution (Filtered)',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
@@ -308,9 +375,9 @@ class HealthSummaryView extends StatelessWidget {
             const SizedBox(height: 16),
             Column(
               children: visitTypes.entries.map((entry) {
-                final percentage =
-                    (entry.value / (healthRecords.visits?.length ?? 1) * 100)
-                        .round();
+                final percentage = visits.isNotEmpty
+                    ? (entry.value / visits.length * 100).round()
+                    : 0;
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 4),
                   child: Row(
@@ -340,27 +407,22 @@ class HealthSummaryView extends StatelessWidget {
     );
   }
 
-  int _getTotalEncounters() {
-    return healthRecords.visits
-            ?.expand((visit) => visit.encounters ?? [])
-            .length ??
-        0;
+  int _getTotalEncounters(List<VisitRecord> visits) {
+    return visits.expand((visit) => visit.encounters ?? []).length;
   }
 
-  int _getTotalPrescriptions() {
-    return healthRecords.visits
-            ?.expand((visit) => visit.encounters ?? [])
-            .expand((encounter) => encounter.prescriptions ?? [])
-            .length ??
-        0;
+  int _getTotalPrescriptions(List<VisitRecord> visits) {
+    return visits
+        .expand((visit) => visit.encounters ?? [])
+        .expand((encounter) => encounter.prescriptions ?? [])
+        .length;
   }
 
-  int _getTotalDiagnoses() {
-    return healthRecords.visits
-            ?.expand((visit) => visit.encounters ?? [])
-            .expand((encounter) => encounter.diagnoses ?? [])
-            .length ??
-        0;
+  int _getTotalDiagnoses(List<VisitRecord> visits) {
+    return visits
+        .expand((visit) => visit.encounters ?? [])
+        .expand((encounter) => encounter.diagnoses ?? [])
+        .length;
   }
 
   String _formatDate(String dateString) {
@@ -375,18 +437,23 @@ class HealthSummaryView extends StatelessWidget {
 
 class HealthTimelineView extends StatelessWidget {
   final PatientHealthRecords healthRecords;
+  final String selectedFilter;
 
   const HealthTimelineView({
     Key? key,
     required this.healthRecords,
+    required this.selectedFilter,
   }) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
-    final sortedVisits = List<VisitRecord>.from(healthRecords.visits ?? []);
+    final filteredVisits = _filterVisits();
+    final sortedVisits = List<VisitRecord>.from(filteredVisits);
     sortedVisits.sort((a, b) {
-      final dateA = DateTime.tryParse(a.startDate ?? '') ?? DateTime(1900);
-      final dateB = DateTime.tryParse(b.startDate ?? '') ?? DateTime(1900);
+      final dateA = DateTime.tryParse(a.startDate ?? a.startDatetime ?? '') ??
+          DateTime(1900);
+      final dateB = DateTime.tryParse(b.startDate ?? b.startDatetime ?? '') ??
+          DateTime(1900);
       return dateB.compareTo(dateA); // Most recent first
     });
 
@@ -408,6 +475,13 @@ class HealthTimelineView extends StatelessWidget {
                 color: Colors.grey[600],
               ),
             ),
+            if (selectedFilter != 'All')
+              Text(
+                'Try changing the filter',
+                style: TextStyle(
+                  color: Colors.grey[500],
+                ),
+              ),
           ],
         ),
       );
@@ -424,6 +498,61 @@ class HealthTimelineView extends StatelessWidget {
         }).toList(),
       ),
     );
+  }
+
+  List<VisitRecord> _filterVisits() {
+    final visits = healthRecords.visits ?? [];
+
+    if (selectedFilter == 'All') {
+      return visits;
+    }
+
+    final now = DateTime.now();
+    DateTime filterDate;
+
+    switch (selectedFilter) {
+      case 'This Month':
+        filterDate = DateTime(now.year, now.month, 1);
+        break;
+      case 'Last 3 Months':
+        filterDate = DateTime(now.year, now.month - 3, 1);
+        break;
+      case 'Last 6 Months':
+        filterDate = DateTime(now.year, now.month - 6, 1);
+        break;
+      case 'This Year':
+        filterDate = DateTime(now.year, 1, 1);
+        break;
+      case 'Last Year':
+        filterDate = DateTime(now.year - 1, 1, 1);
+        break;
+      case 'Last 2 Years':
+        filterDate = DateTime(now.year - 2, 1, 1);
+        break;
+      default:
+        return visits;
+    }
+
+    return visits.where((visit) {
+      final visitDate = _parseVisitDate(visit);
+      if (visitDate == null) return false;
+      return visitDate.isAfter(filterDate) ||
+          visitDate.isAtSameMomentAs(filterDate);
+    }).toList();
+  }
+
+  DateTime? _parseVisitDate(VisitRecord visit) {
+    try {
+      // Try to parse startDatetime first, then startDate
+      if (visit.startDatetime != null && visit.startDatetime!.isNotEmpty) {
+        return DateTime.parse(visit.startDatetime!);
+      } else if (visit.startDate != null && visit.startDate!.isNotEmpty) {
+        return DateTime.parse(visit.startDate!);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Widget _buildTimelineItem(
@@ -650,11 +779,54 @@ class VisitsListView extends StatelessWidget {
       return visits;
     }
 
+    final now = DateTime.now();
+    DateTime filterDate;
+
+    switch (selectedFilter) {
+      case 'This Month':
+        filterDate = DateTime(now.year, now.month, 1);
+        break;
+      case 'Last 3 Months':
+        final threeMonthsAgo = DateTime(now.year, now.month - 3, now.day);
+        filterDate = DateTime(threeMonthsAgo.year, threeMonthsAgo.month, 1);
+        break;
+      case 'Last 6 Months':
+        final sixMonthsAgo = DateTime(now.year, now.month - 6, now.day);
+        filterDate = DateTime(sixMonthsAgo.year, sixMonthsAgo.month, 1);
+        break;
+      case 'This Year':
+        filterDate = DateTime(now.year, 1, 1);
+        break;
+      case 'Last Year':
+        filterDate = DateTime(now.year - 1, 1, 1);
+        break;
+      case 'Last 2 Years':
+        filterDate = DateTime(now.year - 2, 1, 1);
+        break;
+      default:
+        return visits;
+    }
+
     return visits.where((visit) {
-      final visitType = visit.visitType?.toLowerCase() ?? '';
-      final filter = selectedFilter.toLowerCase();
-      return visitType.contains(filter);
+      final visitDate = _parseVisitDate(visit);
+      if (visitDate == null) return false;
+      return visitDate.isAfter(filterDate) ||
+          visitDate.isAtSameMomentAs(filterDate);
     }).toList();
+  }
+
+  DateTime? _parseVisitDate(VisitRecord visit) {
+    try {
+      // Try to parse startDatetime first, then startDate
+      if (visit.startDatetime != null && visit.startDatetime!.isNotEmpty) {
+        return DateTime.parse(visit.startDatetime!);
+      } else if (visit.startDate != null && visit.startDate!.isNotEmpty) {
+        return DateTime.parse(visit.startDate!);
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
   }
 
   Widget _buildVisitCard(BuildContext context, VisitRecord visit) {
