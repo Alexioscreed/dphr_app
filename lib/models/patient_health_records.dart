@@ -120,6 +120,8 @@ class OrderRecord {
   final String? uuid;
   final String? concept;
   final String? conceptDisplay;
+  final String?
+      drugStrength; // New field for drug strength like "10mg", "500mg"
   final String? instructions;
   final String? orderType;
   final String? dateActivated;
@@ -133,6 +135,7 @@ class OrderRecord {
     this.uuid,
     this.concept,
     this.conceptDisplay,
+    this.drugStrength,
     this.instructions,
     this.orderType,
     this.dateActivated,
@@ -148,6 +151,7 @@ class OrderRecord {
       uuid: json['uuid'],
       concept: json['concept'],
       conceptDisplay: json['conceptDisplay'],
+      drugStrength: json['drugStrength'],
       instructions: json['instructions'],
       orderType: json['orderType'],
       dateActivated: json['dateActivated'],
@@ -164,6 +168,7 @@ class OrderRecord {
       'uuid': uuid,
       'concept': concept,
       'conceptDisplay': conceptDisplay,
+      'drugStrength': drugStrength,
       'instructions': instructions,
       'orderType': orderType,
       'dateActivated': dateActivated,

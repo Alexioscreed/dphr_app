@@ -29,8 +29,6 @@ class PatientHistoryScreen extends StatelessWidget {
               _buildMedicationsSection(context),
               const SizedBox(height: 24),
               _buildDiagnosesSection(context),
-              const SizedBox(height: 24),
-              _buildObservationsSection(context),
             ],
           ),
         ),
@@ -233,14 +231,29 @@ class PatientHistoryScreen extends StatelessWidget {
       for (final encounter in visit.encounters!) {
         if (encounter.prescriptions != null) {
           for (final prescription in encounter.prescriptions!) {
+            // Build medication name with drug strength if available
+            String medicationName = prescription.conceptDisplay ??
+                prescription.concept ??
+                'Unknown Medication';
+
+            // Add drug strength to the medication name if available
+            if (prescription.drugStrength != null &&
+                prescription.drugStrength!.isNotEmpty) {
+              if (!medicationName
+                  .toLowerCase()
+                  .contains(prescription.drugStrength!.toLowerCase())) {
+                medicationName = '$medicationName ${prescription.drugStrength}';
+              }
+            }
+
             medications.add({
-              'name': prescription.conceptDisplay ??
-                  prescription.concept ??
-                  'Unknown Medication',
+              'name': medicationName,
               'dosage': prescription.dosage,
               'frequency': prescription.frequency,
               'duration': prescription.duration,
               'instructions': prescription.instructions,
+              'drugStrength':
+                  prescription.drugStrength, // Include drug strength separately
             });
           }
         }
@@ -369,100 +382,6 @@ class PatientHistoryScreen extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                   fontSize: 14,
                 ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildObservationsSection(BuildContext context) {
-    final observations = <Map<String, dynamic>>[];
-    // Extract observations from all encounters
-    if (visit.encounters != null) {
-      for (final encounter in visit.encounters!) {
-        if (encounter.observations != null) {
-          for (final observation in encounter.observations!) {
-            observations.add({
-              'name': observation.conceptDisplay ??
-                  observation.concept ??
-                  'Unknown Test',
-              'value': observation.value ?? observation.valueDisplay,
-              'unit': observation.units,
-              'category': observation.category,
-            });
-          }
-        }
-      }
-    }
-
-    return _buildSection(
-      'Observations & Tests (${observations.length})',
-      Icons.science,
-      observations.isEmpty
-          ? [
-              const Text(
-                'No observations or tests recorded for this visit',
-                style:
-                    TextStyle(color: Colors.grey, fontStyle: FontStyle.italic),
-              )
-            ]
-          : observations
-              .map((observation) => _buildObservationCard(observation))
-              .toList(),
-    );
-  }
-
-  Widget _buildObservationCard(Map<String, dynamic> observation) {
-    return Card(
-      margin: const EdgeInsets.symmetric(vertical: 4),
-      child: Padding(
-        padding: const EdgeInsets.all(12),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(6),
-              decoration: BoxDecoration(
-                color: Colors.blue.withValues(alpha: 0.1),
-                shape: BoxShape.circle,
-              ),
-              child: const Icon(Icons.science, color: Colors.blue, size: 16),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    observation['name'] ?? 'Unknown Test',
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 14,
-                    ),
-                  ),
-                  if (observation['value']?.toString().isNotEmpty == true)
-                    Text(
-                      'Value: ${observation['value']}',
-                      style: const TextStyle(fontSize: 13),
-                    ),
-                  if (observation['unit']?.isNotEmpty == true)
-                    Text(
-                      'Unit: ${observation['unit']}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                  if (observation['category']?.isNotEmpty == true)
-                    Text(
-                      'Category: ${observation['category']}',
-                      style: TextStyle(
-                        color: Colors.grey[600],
-                        fontSize: 12,
-                      ),
-                    ),
-                ],
               ),
             ),
           ],

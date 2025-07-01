@@ -277,10 +277,23 @@ class HealthRecordsService {
 
     for (final encounter in visit.encounters ?? []) {
       for (final prescription in encounter.prescriptions ?? []) {
+        // Build medication name with drug strength if available
+        String medicationName = prescription.conceptDisplay ??
+            prescription.concept ??
+            'Unknown Medication';
+
+        // Add drug strength to the medication name if available
+        if (prescription.drugStrength != null &&
+            prescription.drugStrength!.isNotEmpty) {
+          if (!medicationName
+              .toLowerCase()
+              .contains(prescription.drugStrength!.toLowerCase())) {
+            medicationName = '$medicationName ${prescription.drugStrength}';
+          }
+        }
+
         medications.add({
-          'name': prescription.conceptDisplay ??
-              prescription.concept ??
-              'Unknown Medication',
+          'name': medicationName,
           'dosage': prescription.dosage,
           'frequency': prescription.frequency,
           'duration': prescription.duration,
@@ -289,6 +302,8 @@ class HealthRecordsService {
           'urgency': prescription.urgency,
           'action': prescription.action,
           'orderType': prescription.orderType,
+          'drugStrength':
+              prescription.drugStrength, // Include drug strength separately
           'encounterType': encounter.encounterType,
           'encounterDate': encounter.encounterDate ?? encounter.startDatetime,
           'provider': encounter.provider,
