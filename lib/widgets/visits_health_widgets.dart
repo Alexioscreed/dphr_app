@@ -413,14 +413,16 @@ class HealthTimelineView extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
+    return Padding(
       padding: const EdgeInsets.all(16),
-      itemCount: sortedVisits.length,
-      itemBuilder: (context, index) {
-        final visit = sortedVisits[index];
-        return _buildTimelineItem(
-            context, visit, index == sortedVisits.length - 1);
-      },
+      child: Column(
+        children: sortedVisits.asMap().entries.map((entry) {
+          final index = entry.key;
+          final visit = entry.value;
+          return _buildTimelineItem(
+              context, visit, index == sortedVisits.length - 1);
+        }).toList(),
+      ),
     );
   }
 
@@ -628,13 +630,18 @@ class VisitsListView extends StatelessWidget {
       );
     }
 
-    return ListView.builder(
+    return Padding(
       padding: const EdgeInsets.all(16),
-      itemCount: filteredVisits.length,
-      itemBuilder: (context, index) {
-        final visit = filteredVisits[index];
-        return _buildVisitCard(context, visit);
-      },
+      child: Column(
+        children: filteredVisits
+            .map(
+              (visit) => Padding(
+                padding: const EdgeInsets.only(bottom: 16),
+                child: _buildVisitCard(context, visit),
+              ),
+            )
+            .toList(),
+      ),
     );
   }
 
@@ -653,7 +660,6 @@ class VisitsListView extends StatelessWidget {
   Widget _buildVisitCard(BuildContext context, VisitRecord visit) {
     return Card(
       elevation: 2,
-      margin: const EdgeInsets.only(bottom: 16),
       child: InkWell(
         onTap: () {
           Navigator.of(context).push(

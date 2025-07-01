@@ -287,19 +287,19 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
   Widget _buildHealthRecordsContent(VisitsHealthProvider visitsProvider) {
     final healthRecords = visitsProvider.healthRecords!;
 
-    return Column(
-      children: [
-        // Demographics header
-        DemographicsCard(patient: healthRecords.demographics!),
+    return SingleChildScrollView(
+      child: Column(
+        children: [
+          // Demographics header
+          DemographicsCard(patient: healthRecords.demographics!),
 
-        // Filter and view controls
-        _buildFilterControls(),
+          // Filter and view controls
+          _buildFilterControls(),
 
-        // Main content area
-        Expanded(
-          child: _buildMainContent(visitsProvider, healthRecords),
-        ),
-      ],
+          // Main content area
+          _buildMainContent(visitsProvider, healthRecords),
+        ],
+      ),
     );
   }
 
