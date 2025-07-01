@@ -381,8 +381,6 @@ class PdfService {
                   ],
                 ),
                 pw.SizedBox(height: 12),
-                _buildInfoRow('Visit Type', visit.visitType ?? 'Not specified',
-                    normalTextStyle),
                 _buildInfoRow('Location', visit.location ?? 'Not specified',
                     normalTextStyle),
                 _buildInfoRow(
@@ -487,11 +485,143 @@ class PdfService {
     PdfColor accentColor,
   ) {
     // Extract medications from encounters
-    final medications = <OrderRecord>[];
+    final medications = <Map<String, dynamic>>[];
     if (visit.encounters != null) {
       for (var encounter in visit.encounters!) {
         if (encounter.prescriptions != null) {
-          medications.addAll(encounter.prescriptions!);
+          for (final prescription in encounter.prescriptions!) {
+            // Skip consultation fee and drug prescription entries
+            if ((prescription.conceptDisplay != null &&
+                    (prescription.conceptDisplay!
+                            .toLowerCase()
+                            .contains("consultation fee") ||
+                        prescription.conceptDisplay!
+                            .toLowerCase()
+                            .contains("drug prescription"))) ||
+                (prescription.concept != null &&
+                    (prescription.concept!
+                            .toLowerCase()
+                            .contains("consultation fee") ||
+                        prescription.concept!
+                            .toLowerCase()
+                            .contains("drug prescription")))) {
+              continue;
+            }
+
+            // Build medication name with drug strength if available
+            String medicationName = prescription.conceptDisplay ??
+                prescription.concept ??
+                'Unknown Medication';
+
+            // Add drug strength to the medication name if available
+            if (prescription.drugStrength != null &&
+                prescription.drugStrength!.isNotEmpty) {
+              if (!medicationName
+                  .toLowerCase()
+                  .contains(prescription.drugStrength!.toLowerCase())) {
+                medicationName = '$medicationName ${prescription.drugStrength}';
+              }
+            }
+
+            // Get prescription date from the encounter or the date activated field
+            String prescriptionDate = 'Not specified';
+            if (prescription.dateActivated != null &&
+                prescription.dateActivated!.isNotEmpty) {
+              try {
+                final DateTime date =
+                    DateTime.parse(prescription.dateActivated!);
+                prescriptionDate =
+                    DateFormat('dd-MM-yyyy HH:mm:ss').format(date);
+              } catch (e) {
+                prescriptionDate = prescription.dateActivated!;
+              }
+            } else if (encounter.startDatetime != null) {
+              try {
+                final DateTime date = DateTime.parse(encounter.startDatetime!);
+                prescriptionDate =
+                    DateFormat('dd-MM-yyyy HH:mm:ss').format(date);
+              } catch (e) {
+                prescriptionDate = encounter.startDatetime!;
+              }
+            } else if (encounter.encounterDate != null) {
+              try {
+                final DateTime date = DateTime.parse(encounter.encounterDate!);
+                prescriptionDate =
+                    DateFormat('dd-MM-yyyy HH:mm:ss').format(date);
+              } catch (e) {
+                prescriptionDate = encounter.encounterDate!;
+              }
+            }
+
+            // Extract provider name from formatted prescription text if available
+            // The formatted prescription text contains the provider name in the format:
+            // "Cetirizine Tablet 10mg prescribed on 18-02-2025 12:49:57 by Rosemary Gabriel Wakolela"
+            String providerName = 'Not specified';
+
+            // First try to extract from formatted prescriptions if available
+            if (encounter.formattedPrescriptions != null &&
+                encounter.formattedPrescriptions!.isNotEmpty) {
+              // Look for the pattern "prescribed on [date] by [Provider Name]" in the formatted prescription text
+              // Pattern matches: "prescribed on 18-02-2025 12:49:57 by Rosemary Gabriel Wakolela"
+              RegExp providerRegex = RegExp(
+                  r'prescribed on \d{2}-\d{2}-\d{4} \d{2}:\d{2}:\d{2} by ([^\n\r]+)',
+                  caseSensitive: false);
+              RegExpMatch? match =
+                  providerRegex.firstMatch(encounter.formattedPrescriptions!);
+              if (match != null && match.group(1) != null) {
+                providerName = match.group(1)!.trim();
+                // Clean up the provider name - remove any trailing punctuation or extra whitespace
+                providerName =
+                    providerName.replaceAll(RegExp(r'\s+'), ' ').trim();
+              } else {
+                // Fallback: try a more general pattern in case the date format is different
+                RegExp fallbackRegex = RegExp(r'prescribed on .+ by ([^\n\r]+)',
+                    caseSensitive: false);
+                RegExpMatch? fallbackMatch =
+                    fallbackRegex.firstMatch(encounter.formattedPrescriptions!);
+                if (fallbackMatch != null && fallbackMatch.group(1) != null) {
+                  providerName = fallbackMatch.group(1)!.trim();
+                  providerName =
+                      providerName.replaceAll(RegExp(r'\s+'), ' ').trim();
+                }
+              }
+            }
+
+            // Fallback to encounter.provider if formatted prescriptions don't contain provider info
+            if (providerName == 'Not specified' &&
+                encounter.provider != null &&
+                encounter.provider!.isNotEmpty) {
+              String rawProvider = encounter.provider!;
+              // Try to get a clean name by removing titles
+              List<String> nameParts = rawProvider.split(' ');
+              if (nameParts.length >= 2) {
+                // If there are at least two parts, assume it's a first and last name
+                if (nameParts[0].toLowerCase() == 'dr.' ||
+                    nameParts[0].toLowerCase() == 'dr' ||
+                    nameParts[0].toLowerCase() == 'prof.' ||
+                    nameParts[0].toLowerCase() == 'prof') {
+                  // Skip the title and use just the name
+                  providerName = nameParts.sublist(1).join(' ');
+                } else {
+                  // Use the full name as is
+                  providerName = rawProvider;
+                }
+              } else {
+                // If it's just one word, use it directly
+                providerName = rawProvider;
+              }
+            }
+
+            medications.add({
+              'name': medicationName,
+              'dosage': prescription.dosage,
+              'frequency': prescription.frequency,
+              'duration': prescription.duration,
+              'instructions': prescription.instructions,
+              'prescriptionDate': prescriptionDate,
+              'provider': providerName,
+            });
+          }
         }
       }
     }
@@ -525,7 +655,7 @@ class PdfService {
               ),
               pw.SizedBox(width: 6),
               pw.Text(
-                'Medications',
+                'Medications (${medications.length})',
                 style: sectionHeaderStyle,
               ),
             ],
@@ -534,53 +664,79 @@ class PdfService {
           medications.isEmpty
               ? pw.Text('No medications recorded for this visit.',
                   style: normalTextStyle)
-              : pw.Column(
-                  children: medications
-                      .map(
-                        (med) => pw.Container(
-                          margin: const pw.EdgeInsets.only(bottom: 12),
-                          padding: const pw.EdgeInsets.all(10),
-                          decoration: pw.BoxDecoration(
-                            color: PdfColor(0.97, 0.97, 0.97),
-                            borderRadius: pw.BorderRadius.circular(6),
-                          ),
-                          child: pw.Column(
-                            crossAxisAlignment: pw.CrossAxisAlignment.start,
-                            children: [
-                              pw.Text(
-                                med.conceptDisplay ?? 'Unknown Medication',
-                                style: normalTextStyle.copyWith(
-                                  fontWeight: pw.FontWeight.bold,
-                                  color: accentColor,
-                                ),
-                              ),
-                              pw.SizedBox(height: 6),
-                              if (med.dosage != null)
-                                pw.Text('Dosage: ${med.dosage}',
-                                    style: normalTextStyle),
-                              if (med.drugStrength != null)
-                                pw.Text('Strength: ${med.drugStrength}',
-                                    style: normalTextStyle),
-                              if (med.frequency != null)
-                                pw.Text('Frequency: ${med.frequency}',
-                                    style: normalTextStyle),
-                              if (med.dateActivated != null)
-                                pw.Text(
-                                    'Start Date: ${DateFormat('MMM dd, yyyy').format(DateTime.parse(med.dateActivated!))}',
-                                    style: normalTextStyle),
-                              if (med.duration != null)
-                                pw.Text('Duration: ${med.duration}',
-                                    style: normalTextStyle),
-                              if (med.instructions != null)
-                                pw.Text('Instructions: ${med.instructions}',
-                                    style: normalTextStyle),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
+              : pw.Table(
+                  border: pw.TableBorder.all(
+                    color: PdfColor(0.8, 0.8, 0.8),
+                    width: 0.5,
+                  ),
+                  columnWidths: {
+                    0: const pw.FlexColumnWidth(3), // Item Name
+                    1: const pw.FlexColumnWidth(3), // Description
+                    2: const pw.FlexColumnWidth(2), // Prescribed On
+                    3: const pw.FlexColumnWidth(2), // Provider
+                  },
+                  children: [
+                    // Table header
+                    pw.TableRow(
+                      decoration: pw.BoxDecoration(
+                        color: PdfColor(0.95, 0.95, 0.95),
+                      ),
+                      children: [
+                        _buildTableCell(
+                            'Item Name',
+                            normalTextStyle.copyWith(
+                                fontWeight: pw.FontWeight.bold),
+                            alignment: pw.Alignment.center),
+                        _buildTableCell(
+                            'Description',
+                            normalTextStyle.copyWith(
+                                fontWeight: pw.FontWeight.bold),
+                            alignment: pw.Alignment.center),
+                        _buildTableCell(
+                            'Prescribed On',
+                            normalTextStyle.copyWith(
+                                fontWeight: pw.FontWeight.bold),
+                            alignment: pw.Alignment.center),
+                        _buildTableCell(
+                            'Provider',
+                            normalTextStyle.copyWith(
+                                fontWeight: pw.FontWeight.bold),
+                            alignment: pw.Alignment.center),
+                      ],
+                    ),
+                    // Table rows
+                    ...medications.map((med) {
+                      return pw.TableRow(
+                        children: [
+                          _buildTableCell(med['name'] ?? 'Unknown',
+                              normalTextStyle.copyWith(color: accentColor)),
+                          _buildTableCell(
+                              _buildDescriptionFromMed(med), normalTextStyle),
+                          _buildTableCell(
+                              med['prescriptionDate'] ?? 'Not specified',
+                              normalTextStyle),
+                          _buildTableCell(med['provider'] ?? 'Not specified',
+                              normalTextStyle),
+                        ],
+                      );
+                    }).toList(),
+                  ],
                 ),
         ],
+      ),
+    );
+  }
+
+  pw.Widget _buildTableCell(String text, pw.TextStyle style,
+      {pw.Alignment alignment = pw.Alignment.centerLeft}) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.all(8),
+      child: pw.Align(
+        alignment: alignment,
+        child: pw.Text(
+          text,
+          style: style,
+        ),
       ),
     );
   }
@@ -679,5 +835,25 @@ class PdfService {
       // Return an empty Uint8List in case of error
       return Uint8List(0);
     }
+  }
+
+  // Helper method to build medication description from medication data
+  String _buildDescriptionFromMed(Map<String, dynamic> med) {
+    // Format: dosage + frequency (if available)
+    List<String> parts = [];
+
+    if (med['dosage'] != null && med['dosage'].isNotEmpty) {
+      parts.add(med['dosage']);
+    }
+
+    if (med['frequency'] != null && med['frequency'].isNotEmpty) {
+      parts.add(med['frequency']);
+    }
+
+    if (med['duration'] != null && med['duration'].isNotEmpty) {
+      parts.add(med['duration']);
+    }
+
+    return parts.isEmpty ? '-' : parts.join(' / ');
   }
 }
