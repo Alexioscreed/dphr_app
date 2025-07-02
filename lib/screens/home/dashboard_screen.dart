@@ -7,8 +7,6 @@ import '../shared_records/shared_records_screen.dart';
 import '../testing/medical_records_test_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../../widgets/notification_badge.dart';
-import '../appointments/appointments_screen.dart';
-import '../appointments/book_appointment_screen.dart';
 import '../sharing/share_data_screen.dart';
 import '../log_section_screen.dart';
 import '../../providers/auth_provider.dart';
@@ -30,7 +28,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     const VisitsHealthRecordsScreen(),
     const LogSectionScreen(),
     const HealthProgressScreen(),
-    const AppointmentsScreen(),
   ];
 
   @override
@@ -146,10 +143,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             BottomNavigationBarItem(
               icon: Icon(Icons.trending_up),
               label: 'Progress',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.calendar_today),
-              label: 'Appointments',
             ),
           ],
         ),
@@ -356,9 +349,7 @@ class DashboardHomeScreen extends StatelessWidget {
                   'description': 'See a Cardiologist for your chest pain',
                   'time': 'Just now',
                   'color': Colors.red,
-                  'isRecommendation': true,
-                  'specialty': 'Cardiologist',
-                  'reason': 'Chest Pain (Severity: 4/5)',
+                  'isRecommendation': false,
                 },
                 {
                   'icon': Icons.medication,
@@ -370,8 +361,8 @@ class DashboardHomeScreen extends StatelessWidget {
                 },
                 {
                   'icon': Icons.local_hospital,
-                  'title': 'Doctor Appointment',
-                  'description': 'Dr. Smith - Cardiology',
+                  'title': 'Health Check',
+                  'description': 'Regular health monitoring',
                   'time': 'Yesterday',
                   'color': Colors.green,
                   'isRecommendation': false,
@@ -388,28 +379,13 @@ class DashboardHomeScreen extends StatelessWidget {
                 ),
                 title: Text(activities[index]['title']),
                 subtitle: Text(activities[index]['description']),
-                trailing: activities[index]['isRecommendation'] == true
-                    ? ElevatedButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(
-                              builder: (context) => BookAppointmentScreen(
-                                recommendedSpecialty: activities[index]
-                                    ['specialty'],
-                                symptomReason: activities[index]['reason'],
-                              ),
-                            ),
-                          );
-                        },
-                        child: const Text('Book'),
-                      )
-                    : Text(
-                        activities[index]['time'],
-                        style: const TextStyle(
-                          color: Colors.grey,
-                          fontSize: 12,
-                        ),
-                      ),
+                trailing: Text(
+                  activities[index]['time'],
+                  style: const TextStyle(
+                    color: Colors.grey,
+                    fontSize: 12,
+                  ),
+                ),
               );
             },
           ),
@@ -442,16 +418,6 @@ class DashboardHomeScreen extends StatelessWidget {
                   Navigator.of(context).push(
                     MaterialPageRoute(
                         builder: (context) => const LogSectionScreen()),
-                  );
-                },
-              ),
-              _buildActionButton(
-                icon: Icons.calendar_today,
-                label: 'Appointments',
-                onTap: () {
-                  Navigator.of(context).push(
-                    MaterialPageRoute(
-                        builder: (context) => const AppointmentsScreen()),
                   );
                 },
               ),

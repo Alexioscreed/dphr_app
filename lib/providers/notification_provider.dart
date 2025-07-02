@@ -73,10 +73,10 @@ class NotificationProvider with ChangeNotifier {
       _notifications = [
         Notification(
           id: '1',
-          title: 'Appointment Reminder',
-          message: 'You have an appointment with Dr. Smith tomorrow at 10:00 AM.',
+          title: 'Health Check Reminder',
+          message: 'Remember to check your blood pressure today.',
           date: DateTime.now().subtract(const Duration(hours: 2)),
-          type: 'appointment',
+          type: 'health_risk',
         ),
         Notification(
           id: '2',
@@ -127,19 +127,22 @@ class NotificationProvider with ChangeNotifier {
 
   // Mark all notifications as read
   Future<void> markAllAsRead() async {
-    _notifications = _notifications.map((notification) => Notification(
-      id: notification.id,
-      title: notification.title,
-      message: notification.message,
-      date: notification.date,
-      isRead: true,
-      type: notification.type,
-    )).toList();
+    _notifications = _notifications
+        .map((notification) => Notification(
+              id: notification.id,
+              title: notification.title,
+              message: notification.message,
+              date: notification.date,
+              isRead: true,
+              type: notification.type,
+            ))
+        .toList();
 
     notifyListeners();
 
     // In a real app, you would update this in a database or API
   }
+
   // Toggle notifications enabled
   Future<void> toggleNotifications(bool enabled) async {
     _notificationsEnabled = enabled;
@@ -158,18 +161,20 @@ class NotificationProvider with ChangeNotifier {
     for (var risk in risks) {
       // Check if we already have a notification for this risk type today
       final today = DateTime.now();
-      final existingRisk = _notifications.where((n) =>
-        n.type == 'health_risk' &&
-        n.title.contains(risk.type) &&
-        n.date.year == today.year &&
-        n.date.month == today.month &&
-        n.date.day == today.day
-      ).isNotEmpty;
+      final existingRisk = _notifications
+          .where((n) =>
+              n.type == 'health_risk' &&
+              n.title.contains(risk.type) &&
+              n.date.year == today.year &&
+              n.date.month == today.month &&
+              n.date.day == today.day)
+          .isNotEmpty;
 
       if (!existingRisk) {
         await addNotification(
           title: risk.title,
-          message: '${risk.description}\n\nRecommendation: ${risk.recommendation}',
+          message:
+              '${risk.description}\n\nRecommendation: ${risk.recommendation}',
           type: 'health_risk',
         );
       }
@@ -186,7 +191,8 @@ class NotificationProvider with ChangeNotifier {
 
       // Analyze vitals if provided
       if (vitals != null && vitals.isNotEmpty) {
-        final vitalRisks = HealthAnalyticsService.analyzeVitalMeasurements(vitals);
+        final vitalRisks =
+            HealthAnalyticsService.analyzeVitalMeasurements(vitals);
         allRisks.addAll(vitalRisks);
       }
 
@@ -197,9 +203,10 @@ class NotificationProvider with ChangeNotifier {
       }
 
       // Filter only high and critical risks for notifications
-      final highRisks = allRisks.where((risk) =>
-        risk.severity == 'HIGH' || risk.severity == 'CRITICAL'
-      ).toList();
+      final highRisks = allRisks
+          .where(
+              (risk) => risk.severity == 'HIGH' || risk.severity == 'CRITICAL')
+          .toList();
 
       if (highRisks.isNotEmpty) {
         await addHealthRiskNotifications(highRisks);

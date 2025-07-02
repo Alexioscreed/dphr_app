@@ -7,7 +7,6 @@ import 'providers/visits_health_provider.dart';
 import 'providers/notification_provider.dart' as notifications;
 import 'providers/api_provider.dart';
 import 'providers/theme_provider.dart';
-import 'providers/appointment_provider.dart';
 import 'providers/vital_measurements_provider.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
@@ -104,7 +103,6 @@ void main() async {
             create: (_) => notifications.NotificationProvider()),
         ChangeNotifierProvider(create: (_) => ApiProvider()),
         ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
-        ChangeNotifierProvider(create: (_) => AppointmentProvider()),
         ChangeNotifierProvider(create: (_) => VitalMeasurementsProvider()),
       ],
       child: const MyApp(),

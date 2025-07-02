@@ -97,10 +97,9 @@ class SymptomAnalyzer {
     if (isUrgent(symptom, severity)) {
       return 'Your $symptom symptom requires prompt attention. We recommend seeing a $specialist as soon as possible.';
     } else if (severity >= 3) {
-      return 'Based on your $symptom symptom, we recommend scheduling an appointment with a $specialist.';
+      return 'Based on your $symptom symptom, we recommend consulting a $specialist.';
     } else {
       return 'Consider consulting a $specialist about your $symptom if it persists or worsens.';
     }
   }
 }
-

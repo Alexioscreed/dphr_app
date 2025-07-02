@@ -140,13 +140,12 @@ class DoctorDetailScreen extends StatelessWidget {
       mainAxisAlignment: MainAxisAlignment.spaceEvenly,
       children: [
         ElevatedButton.icon(
-          icon: const Icon(Icons.calendar_today),
-          label: const Text('Schedule Appointment'),
+          icon: const Icon(Icons.phone),
+          label: const Text('Contact Doctor'),
           onPressed: () {
-            // Navigate to appointment scheduling screen
+            // Navigate to contact screen
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(
-                  content: Text('Appointment scheduling coming soon')),
+              const SnackBar(content: Text('Contact feature coming soon')),
             );
           },
         ),

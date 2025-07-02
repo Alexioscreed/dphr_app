@@ -5,7 +5,6 @@ import '../providers/theme_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/health_record_provider.dart';
 import '../providers/api_provider.dart';
-import '../providers/appointment_provider.dart';
 import '../providers/vital_measurements_provider.dart';
 
 class AppInitializationService {
@@ -28,7 +27,8 @@ class AppInitializationService {
     await themeProvider.initializeFromCache();
 
     // Initialize notification provider
-    final notificationProvider = Provider.of<NotificationProvider>(context, listen: false);
+    final notificationProvider =
+        Provider.of<NotificationProvider>(context, listen: false);
     await notificationProvider.initialize();
   }
 
@@ -38,15 +38,13 @@ class AppInitializationService {
 
     if (authProvider.isAuthenticated) {
       // Load health records
-      final healthRecordProvider = Provider.of<HealthRecordProvider>(context, listen: false);
+      final healthRecordProvider =
+          Provider.of<HealthRecordProvider>(context, listen: false);
       await healthRecordProvider.fetchHealthRecords();
 
-      // Load appointments
-      final appointmentProvider = Provider.of<AppointmentProvider>(context, listen: false);
-      await appointmentProvider.fetchAppointments();
-
       // Load vital measurements
-      final vitalMeasurementsProvider = Provider.of<VitalMeasurementsProvider>(context, listen: false);
+      final vitalMeasurementsProvider =
+          Provider.of<VitalMeasurementsProvider>(context, listen: false);
       await vitalMeasurementsProvider.fetchMeasurements();
     }
   }
