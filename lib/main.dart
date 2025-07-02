@@ -16,6 +16,7 @@ import 'services/doctor_service.dart';
 import 'services/prescription_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/cache_service.dart';
+import 'services/email_service.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -104,6 +105,9 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ApiProvider()),
         ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => VitalMeasurementsProvider()),
+        Provider<EmailService>(
+          create: (context) => EmailService(context.read<AuthService>()),
+        ),
       ],
       child: const MyApp(),
     ),

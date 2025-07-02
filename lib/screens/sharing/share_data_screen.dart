@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../providers/health_record_provider.dart';
+import '../../providers/visits_health_provider.dart';
+import '../../services/pdf_service.dart';
+import '../../services/email_service.dart';
 
 class ShareDataScreen extends StatefulWidget {
   const ShareDataScreen({Key? key}) : super(key: key);
@@ -17,8 +19,23 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
 
   bool _isLoading = false;
   bool _shareSuccess = false;
-  List<String> _selectedRecords = [];
-  DateTime _expiryDate = DateTime.now().add(const Duration(days: 30));
+  String? _selectedVisitId;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _fetchVisits();
+    });
+  }
+
+  Future<void> _fetchVisits() async {
+    final visitsProvider =
+        Provider.of<VisitsHealthProvider>(context, listen: false);
+    if (!visitsProvider.isLoading && visitsProvider.healthRecords == null) {
+      await visitsProvider.fetchMyHealthRecords();
+    }
+  }
 
   @override
   void dispose() {
@@ -28,30 +45,79 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
     super.dispose();
   }
 
-  Future<void> _selectExpiryDate(BuildContext context) async {
-    final DateTime? picked = await showDatePicker(
-      context: context,
-      initialDate: _expiryDate,
-      firstDate: DateTime.now().add(const Duration(days: 1)),
-      lastDate: DateTime.now().add(const Duration(days: 365)),
-    );
-
-    if (picked != null && picked != _expiryDate) {
-      setState(() {
-        _expiryDate = picked;
-      });
-    }
-  }
-
   Future<void> _shareData() async {
-    if (_formKey.currentState!.validate() && _selectedRecords.isNotEmpty) {
+    if (_formKey.currentState!.validate() && _selectedVisitId != null) {
       setState(() {
         _isLoading = true;
       });
 
       try {
-        // Simulate API call
-        await Future.delayed(const Duration(seconds: 2));
+        final visitsProvider =
+            Provider.of<VisitsHealthProvider>(context, listen: false);
+        final visits = visitsProvider.healthRecords?.visits ?? [];
+
+        // Find the selected visit
+        final selectedVisit = visits.firstWhere(
+          (visit) => visit.visitUuid == _selectedVisitId,
+          orElse: () => throw Exception('Selected visit not found'),
+        );
+
+        // Get patient demographics
+        final demographics = visitsProvider.healthRecords?.demographics;
+        if (demographics == null) {
+          throw Exception('Patient demographics not available');
+        }
+
+        // Generate PDF for the visit
+        final pdfService = PdfService();
+        final pdfPath = await pdfService.generateVisitPdf(
+          visit: selectedVisit,
+          demographics: demographics,
+          appName: 'DPHR - Digital Personal Health Records',
+        );
+
+        // Get email service from provider
+        final emailService = Provider.of<EmailService>(context, listen: false);
+
+        // Format visit date for subject line
+        String visitDate = 'Unknown date';
+        if (selectedVisit.startDate != null) {
+          try {
+            final date = DateTime.parse(selectedVisit.startDate!);
+            visitDate = '${date.day}/${date.month}/${date.year}';
+          } catch (e) {
+            visitDate = selectedVisit.startDate!;
+          }
+        }
+
+        final visitType = selectedVisit.visitType ?? 'Visit';
+        final subject = 'DPHR - $visitType Summary ($visitDate)';
+
+        final message = '''
+Dear ${_recipientNameController.text},
+
+The patient has shared their health visit summary with you through the DPHR app.
+Purpose of sharing: ${_purposeController.text}
+
+This is an automated message. Please do not reply to this email.
+
+Regards,
+DPHR Team
+''';
+
+        // Send email with attachment
+        final emailSent = await emailService.sendEmailWithAttachment(
+          recipientEmail: _recipientEmailController.text,
+          recipientName: _recipientNameController.text,
+          subject: subject,
+          message: message,
+          pdfFilePath: pdfPath,
+          purpose: _purposeController.text,
+        );
+
+        if (!emailSent) {
+          throw Exception('Failed to send email to recipient');
+        }
 
         setState(() {
           _isLoading = false;
@@ -68,9 +134,9 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
           SnackBar(content: Text('Failed to share data: $e')),
         );
       }
-    } else if (_selectedRecords.isEmpty) {
+    } else if (_selectedVisitId == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select at least one record to share')),
+        const SnackBar(content: Text('Please select a visit to share')),
       );
     }
   }
@@ -140,7 +206,8 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
                 if (value == null || value.isEmpty) {
                   return 'Please enter recipient email';
                 }
-                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+                if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                    .hasMatch(value)) {
                   return 'Please enter a valid email address';
                 }
                 return null;
@@ -161,32 +228,16 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
                 return null;
               },
             ),
-            const SizedBox(height: 16),
-            TextFormField(
-              readOnly: true,
-              decoration: InputDecoration(
-                labelText: 'Expiry Date',
-                border: const OutlineInputBorder(),
-                prefixIcon: const Icon(Icons.calendar_today),
-                suffixIcon: IconButton(
-                  icon: const Icon(Icons.calendar_month),
-                  onPressed: () => _selectExpiryDate(context),
-                ),
-              ),
-              controller: TextEditingController(
-                text: '${_expiryDate.day}/${_expiryDate.month}/${_expiryDate.year}',
-              ),
-            ),
             const SizedBox(height: 24),
             const Text(
-              'Select Records to Share',
+              'Select Visit to Share',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 16),
-            _buildRecordSelectionList(),
+            _buildVisitSelectionList(),
             const SizedBox(height: 24),
             SizedBox(
               width: double.infinity,
@@ -198,13 +249,13 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
                 ),
                 child: _isLoading
                     ? const SizedBox(
-                  height: 20,
-                  width: 20,
-                  child: CircularProgressIndicator(
-                    color: Colors.white,
-                    strokeWidth: 2,
-                  ),
-                )
+                        height: 20,
+                        width: 20,
+                        child: CircularProgressIndicator(
+                          color: Colors.white,
+                          strokeWidth: 2,
+                        ),
+                      )
                     : const Text('Share Records'),
               ),
             ),
@@ -214,8 +265,8 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
     );
   }
 
-  Widget _buildRecordSelectionList() {
-    return Consumer<HealthRecordProvider>(
+  Widget _buildVisitSelectionList() {
+    return Consumer<VisitsHealthProvider>(
       builder: (context, provider, child) {
         if (provider.isLoading) {
           return const Center(
@@ -234,49 +285,68 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
           );
         }
 
-        final records = provider.healthRecords;
+        final visits = provider.healthRecords?.visits ?? [];
 
-        if (records.isEmpty) {
+        if (visits.isEmpty) {
           return const Center(
-            child: Text('No health records available to share'),
+            child: Text('No visits available to share'),
           );
         }
 
         return Card(
           elevation: 2,
+          margin: const EdgeInsets.symmetric(vertical: 4.0),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12.0),
+          ),
+          clipBehavior: Clip.antiAlias,
           child: ListView.builder(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: records.length,
+            itemCount: visits.length,
             itemBuilder: (context, index) {
-              final record = records[index];
-              final isSelected = _selectedRecords.contains(record.id);
+              final visit = visits[index];
+              final isSelected = visit.visitUuid == _selectedVisitId;
 
-              return CheckboxListTile(
+              // Format visit date
+              String visitDate = 'Unknown date';
+              if (visit.startDate != null) {
+                try {
+                  final date = DateTime.parse(visit.startDate!);
+                  visitDate = '${date.day}/${date.month}/${date.year}';
+                } catch (e) {
+                  visitDate = visit.startDate!;
+                }
+              }
+
+              return RadioListTile<String?>(
+                tileColor: isSelected
+                    ? Colors.blue.shade50
+                    : Theme.of(context).canvasColor,
                 title: Text(
-                  record.title,
-                  style: const TextStyle(
+                  visit.visitType != null && visit.visitType!.isNotEmpty
+                      ? visit.visitType!
+                      : 'Visit',
+                  style: TextStyle(
                     fontWeight: FontWeight.bold,
+                    color: isSelected ? Theme.of(context).primaryColor : null,
                   ),
                 ),
                 subtitle: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('Date: ${_formatDate(record.date)}'),
-                    Text('Type: ${record.type}'),
+                    Text('Date: $visitDate'),
+                    Text('Location: ${visit.location ?? 'Unknown'}'),
                   ],
                 ),
-                value: isSelected,
+                value: visit.visitUuid,
+                groupValue: _selectedVisitId,
                 onChanged: (value) {
                   setState(() {
-                    if (value == true) {
-                      _selectedRecords.add(record.id);
-                    } else {
-                      _selectedRecords.remove(record.id);
-                    }
+                    _selectedVisitId = value;
                   });
                 },
-                activeColor: const Color(0xFF2196F3),
+                activeColor: Theme.of(context).primaryColor,
               );
             },
           ),
@@ -299,7 +369,7 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
             ),
             const SizedBox(height: 24),
             const Text(
-              'Records Shared Successfully',
+              'Visit Summary Shared Successfully',
               style: TextStyle(
                 fontSize: 24,
                 fontWeight: FontWeight.bold,
@@ -307,7 +377,7 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'You have successfully shared ${_selectedRecords.length} health record(s) with ${_recipientNameController.text}',
+              'You have successfully shared a visit summary with ${_recipientNameController.text}',
               textAlign: TextAlign.center,
               style: const TextStyle(
                 fontSize: 16,
@@ -321,10 +391,12 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
               ),
             ),
             const SizedBox(height: 8),
-            Text(
-              'The shared records will expire on ${_expiryDate.day}/${_expiryDate.month}/${_expiryDate.year}',
-              style: const TextStyle(
-                fontSize: 16,
+            const Text(
+              'An email with the PDF attachment has been sent to the recipient.',
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.green,
               ),
             ),
             const SizedBox(height: 32),
@@ -334,7 +406,8 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF2196F3),
-                padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
+                padding:
+                    const EdgeInsets.symmetric(vertical: 16, horizontal: 32),
               ),
               child: const Text('Back to Dashboard'),
             ),
@@ -342,9 +415,5 @@ class _ShareDataScreenState extends State<ShareDataScreen> {
         ),
       ),
     );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }
