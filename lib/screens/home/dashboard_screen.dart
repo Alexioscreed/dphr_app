@@ -339,18 +339,10 @@ class DashboardHomeScreen extends StatelessWidget {
           child: ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: 3,
+            itemCount: 2,
             separatorBuilder: (context, index) => const Divider(),
             itemBuilder: (context, index) {
               final List<Map<String, dynamic>> activities = [
-                {
-                  'icon': Icons.medical_services,
-                  'title': 'Doctor Recommendation',
-                  'description': 'See a Cardiologist for your chest pain',
-                  'time': 'Just now',
-                  'color': Colors.red,
-                  'isRecommendation': false,
-                },
                 {
                   'icon': Icons.medication,
                   'title': 'Medication Reminder',
