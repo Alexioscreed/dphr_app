@@ -78,7 +78,19 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
           value: '${_valueController.text} ${_getUnit()}',
           date: DateTime.now(),
           notes: _notesController.text,
-        ); // Save to backend
+        );
+
+        // Log to terminal/console
+        print('==========================================');
+        print('NEW VITAL LOGGED - ${DateTime.now().toString()}');
+        print('==========================================');
+        print('Type: ${vital.type}');
+        print('Value: ${vital.value}');
+        print('Notes: ${vital.notes.isNotEmpty ? vital.notes : 'None'}');
+        print('Date: ${vital.date.toString()}');
+        print('==========================================');
+
+        // Save to backend
         await _saveVitalToBackend(vital);
 
         // Add to provider for health analysis
@@ -104,6 +116,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
       }
     }
   }
+
   Future<void> _saveVitalToBackend(VitalMeasurement vital) async {
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
@@ -128,7 +141,7 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
       if (response['error'] != null) {
         throw Exception(response['error']);
       }
-      
+
       debugPrint('Vital saved successfully: ${response.toString()}');
     } catch (e) {
       debugPrint('Error saving vital to backend: $e');
@@ -141,6 +154,15 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
       final scannedValue =
           await CameraScanService.showScanDialog(context, _selectedVitalType);
       if (scannedValue != null && scannedValue.isNotEmpty) {
+        // Log camera-scanned value to terminal/console
+        print('==========================================');
+        print('CAMERA SCAN RESULT - ${DateTime.now().toString()}');
+        print('==========================================');
+        print('Vital Type: $_selectedVitalType');
+        print('Scanned Value: $scannedValue');
+        print('Device: External Health Device (Camera Scan)');
+        print('==========================================');
+
         setState(() {
           _valueController.text = scannedValue;
         });
@@ -228,7 +250,9 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
                     prefixIcon: const Icon(Icons.numbers),
                     suffixText: _getUnit(),
                   ),
-                  keyboardType: TextInputType.numberWithOptions(decimal: true),
+                  keyboardType: _selectedVitalType == 'Blood Pressure'
+                      ? TextInputType.text
+                      : TextInputType.numberWithOptions(decimal: true),
                   validator: (value) {
                     if (value == null || value.isEmpty) {
                       return 'Please enter a value';

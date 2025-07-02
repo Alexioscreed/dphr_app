@@ -40,37 +40,38 @@ class VitalMeasurementsProvider with ChangeNotifier {
     notifyListeners();
 
     try {
-      // For now, use sample data with some real API structure
-      // In production, this would fetch from the backend
-      await Future.delayed(const Duration(seconds: 1));
+      // This will be injected via constructor - using a placeholder for now
+      // The actual API service will be provided when this is used
+      _isLoading = false;
+      notifyListeners();
+    } catch (e) {
+      _error = e.toString();
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
 
-      // Sample data - in real implementation, this would be fetched from API
-      _measurements = [
-        VitalMeasurement(
-          type: 'Blood Pressure',
-          value: '120/80 mmHg',
-          date: DateTime.now().subtract(const Duration(days: 1)),
-          notes: 'Measured after rest',
-        ),
-        VitalMeasurement(
-          type: 'Heart Rate',
-          value: '72 bpm',
-          date: DateTime.now().subtract(const Duration(days: 2)),
-          notes: 'Measured at rest',
-        ),
-        VitalMeasurement(
-          type: 'Blood Glucose',
-          value: '95 mg/dL',
-          date: DateTime.now().subtract(const Duration(days: 3)),
-          notes: 'Fasting',
-        ),
-        VitalMeasurement(
-          type: 'Weight',
-          value: '75 kg',
-          date: DateTime.now().subtract(const Duration(days: 7)),
-          notes: '',
-        ),
-      ];
+  // Fetch measurements by patient UUID
+  Future<void> fetchMeasurementsByPatientUuid(
+      String patientUuid, ApiService apiService) async {
+    _isLoading = true;
+    _error = '';
+    notifyListeners();
+
+    try {
+      final response =
+          await apiService.get('vital-signs/patient-uuid/$patientUuid');
+
+      if (response is List) {
+        _measurements = response.map<VitalMeasurement>((json) {
+          return VitalMeasurement(
+            type: json['type'] ?? '',
+            value: json['value'] ?? '',
+            date: DateTime.parse(json['recordedAt']),
+            notes: json['notes'] ?? '',
+          );
+        }).toList();
+      }
 
       _isLoading = false;
       notifyListeners();
@@ -78,6 +79,60 @@ class VitalMeasurementsProvider with ChangeNotifier {
       _error = e.toString();
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  // Fetch measurements by type and date range
+  Future<List<VitalMeasurement>> fetchMeasurementsByTypeAndDateRange(
+      String patientUuid,
+      String type,
+      DateTime startDate,
+      DateTime endDate,
+      ApiService apiService) async {
+    try {
+      final startDateStr = startDate.toIso8601String();
+      final endDateStr = endDate.toIso8601String();
+
+      final response = await apiService.get(
+          'vital-signs/patient-uuid/$patientUuid/date-range?startDate=$startDateStr&endDate=$endDateStr&type=$type');
+
+      if (response is List) {
+        return response.map<VitalMeasurement>((json) {
+          return VitalMeasurement(
+            type: json['type'] ?? '',
+            value: json['value'] ?? '',
+            date: DateTime.parse(json['recordedAt']),
+            notes: json['notes'] ?? '',
+          );
+        }).toList();
+      }
+
+      return [];
+    } catch (e) {
+      throw Exception('Failed to fetch measurements: $e');
+    }
+  }
+
+  // Fetch latest measurement by type
+  Future<VitalMeasurement?> fetchLatestMeasurementByType(
+      String patientUuid, String type, ApiService apiService) async {
+    try {
+      final response = await apiService
+          .get('vital-signs/patient-uuid/$patientUuid/latest/$type');
+
+      if (response != null) {
+        return VitalMeasurement(
+          type: response['type'] ?? '',
+          value: response['value'] ?? '',
+          date: DateTime.parse(response['recordedAt']),
+          notes: response['notes'] ?? '',
+        );
+      }
+
+      return null;
+    } catch (e) {
+      // Return null if no measurement found, don't throw error
+      return null;
     }
   }
 

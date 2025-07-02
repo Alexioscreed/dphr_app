@@ -11,6 +11,8 @@ import '../sharing/share_data_screen.dart';
 import '../log_section_screen.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/notification_provider.dart' as notifications;
+import '../../providers/vital_measurements_provider.dart';
+import '../../services/api_service.dart';
 import '../auth/login_screen.dart';
 import '../health_records/visit_details_demo_screen.dart';
 
@@ -151,8 +153,65 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 }
 
-class DashboardHomeScreen extends StatelessWidget {
+class DashboardHomeScreen extends StatefulWidget {
   const DashboardHomeScreen({Key? key}) : super(key: key);
+
+  @override
+  State<DashboardHomeScreen> createState() => _DashboardHomeScreenState();
+}
+
+class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
+  bool _isLoadingVitals = false;
+  Map<String, String?> _latestVitals = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLatestVitals();
+  }
+
+  Future<void> _loadLatestVitals() async {
+    setState(() {
+      _isLoadingVitals = true;
+    });
+
+    try {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final apiService = Provider.of<ApiService>(context, listen: false);
+      final vitalProvider =
+          Provider.of<VitalMeasurementsProvider>(context, listen: false);
+
+      if (authProvider.currentUser?.patientUuid != null) {
+        final vitalTypes = [
+          'Heart Rate',
+          'Blood Pressure',
+          'Blood Glucose',
+          'Weight',
+          'Temperature',
+          'Oxygen Saturation'
+        ];
+
+        for (String type in vitalTypes) {
+          try {
+            final latest = await vitalProvider.fetchLatestMeasurementByType(
+              authProvider.currentUser!.patientUuid!,
+              type,
+              apiService,
+            );
+            _latestVitals[type] = latest?.value;
+          } catch (e) {
+            _latestVitals[type] = null;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Error loading latest vitals: $e');
+    }
+
+    setState(() {
+      _isLoadingVitals = false;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -227,12 +286,23 @@ class DashboardHomeScreen extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          'Health Summary',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              'Health Summary',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            if (_isLoadingVitals)
+              const SizedBox(
+                width: 20,
+                height: 20,
+                child: CircularProgressIndicator(strokeWidth: 2),
+              ),
+          ],
         ),
         const SizedBox(height: 16),
         Row(
@@ -241,7 +311,7 @@ class DashboardHomeScreen extends StatelessWidget {
               child: _buildHealthMetricCard(
                 icon: Icons.favorite,
                 title: 'Heart Rate',
-                value: '72 bpm',
+                value: _latestVitals['Heart Rate'] ?? 'No data',
                 color: Colors.red,
               ),
             ),
@@ -250,7 +320,7 @@ class DashboardHomeScreen extends StatelessWidget {
               child: _buildHealthMetricCard(
                 icon: Icons.local_fire_department,
                 title: 'Blood Pressure',
-                value: '120/80',
+                value: _latestVitals['Blood Pressure'] ?? 'No data',
                 color: Colors.orange,
               ),
             ),
@@ -263,7 +333,7 @@ class DashboardHomeScreen extends StatelessWidget {
               child: _buildHealthMetricCard(
                 icon: Icons.bloodtype,
                 title: 'Glucose',
-                value: '95 mg/dL',
+                value: _latestVitals['Blood Glucose'] ?? 'No data',
                 color: Colors.purple,
               ),
             ),
@@ -272,11 +342,42 @@ class DashboardHomeScreen extends StatelessWidget {
               child: _buildHealthMetricCard(
                 icon: Icons.monitor_weight,
                 title: 'Weight',
-                value: '75 kg',
+                value: _latestVitals['Weight'] ?? 'No data',
                 color: Colors.blue,
               ),
             ),
           ],
+        ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(
+              child: _buildHealthMetricCard(
+                icon: Icons.thermostat,
+                title: 'Temperature',
+                value: _latestVitals['Temperature'] ?? 'No data',
+                color: Colors.green,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _buildHealthMetricCard(
+                icon: Icons.air,
+                title: 'Oxygen Sat.',
+                value: _latestVitals['Oxygen Saturation'] ?? 'No data',
+                color: Colors.cyan,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        TextButton.icon(
+          onPressed: _loadLatestVitals,
+          icon: const Icon(Icons.refresh),
+          label: const Text('Refresh Data'),
+          style: TextButton.styleFrom(
+            foregroundColor: const Color(0xFF2196F3),
+          ),
         ),
       ],
     );

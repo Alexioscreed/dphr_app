@@ -42,7 +42,19 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
           severity: int.parse(_severityController.text),
           date: DateTime.now(),
           notes: _notesController.text,
-        ); // Save to backend
+        );
+
+        // Log to terminal/console
+        print('==========================================');
+        print('NEW SYMPTOM LOGGED - ${DateTime.now().toString()}');
+        print('==========================================');
+        print('Symptom: ${symptom.name}');
+        print('Severity: ${symptom.severity}/5');
+        print('Notes: ${symptom.notes.isNotEmpty ? symptom.notes : 'None'}');
+        print('Date: ${symptom.date.toString()}');
+        print('==========================================');
+
+        // Save to backend
         await _saveSymptomToBackend(symptom);
 
         // Add to provider for health analysis
