@@ -163,11 +163,90 @@ class DashboardHomeScreen extends StatefulWidget {
 class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   bool _isLoadingVitals = false;
   Map<String, String?> _latestVitals = {};
+  List<Map<String, dynamic>> _recentActivities = [];
 
   @override
   void initState() {
     super.initState();
     _loadLatestVitals();
+    _loadRecentActivities();
+  }
+
+  Future<void> _loadRecentActivities() async {
+    try {
+      final vitalProvider =
+          Provider.of<VitalMeasurementsProvider>(context, listen: false);
+
+      List<Map<String, dynamic>> activities = [];
+
+      // Get recent vital measurements
+      final recentVitals = vitalProvider.measurements.take(3).toList();
+      for (var vital in recentVitals) {
+        final now = DateTime.now();
+        final difference = now.difference(vital.date);
+        String timeAgo;
+
+        if (difference.inDays > 0) {
+          timeAgo =
+              '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+        } else if (difference.inHours > 0) {
+          timeAgo =
+              '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+        } else {
+          timeAgo =
+              '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+        }
+
+        activities.add({
+          'icon': Icons.local_hospital,
+          'title': 'Health Check',
+          'description': 'Logged ${vital.type}: ${vital.value}',
+          'time': timeAgo,
+          'color': Colors.green,
+          'isRecommendation': false,
+        });
+      }
+
+      // Get recent symptoms
+      final recentSymptoms = vitalProvider.symptoms.take(3).toList();
+      for (var symptom in recentSymptoms) {
+        final now = DateTime.now();
+        final difference = now.difference(symptom.date);
+        String timeAgo;
+
+        if (difference.inDays > 0) {
+          timeAgo =
+              '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+        } else if (difference.inHours > 0) {
+          timeAgo =
+              '${difference.inHours} hour${difference.inHours > 1 ? 's' : ''} ago';
+        } else {
+          timeAgo =
+              '${difference.inMinutes} minute${difference.inMinutes > 1 ? 's' : ''} ago';
+        }
+
+        activities.add({
+          'icon': Icons.local_hospital,
+          'title': 'Health Check',
+          'description':
+              'Logged symptom: ${symptom.name} (Severity: ${symptom.severity}/5)',
+          'time': timeAgo,
+          'color': Colors.green,
+          'isRecommendation': false,
+        });
+      }
+
+      // Sort by most recent first and take top 5
+      activities
+          .sort((a, b) => a['time'].toString().compareTo(b['time'].toString()));
+      _recentActivities = activities.take(5).toList();
+
+      if (mounted) {
+        setState(() {});
+      }
+    } catch (e) {
+      debugPrint('Error loading recent activities: $e');
+    }
   }
 
   Future<void> _loadLatestVitals() async {
@@ -370,15 +449,6 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
             ),
           ],
         ),
-        const SizedBox(height: 16),
-        TextButton.icon(
-          onPressed: _loadLatestVitals,
-          icon: const Icon(Icons.refresh),
-          label: const Text('Refresh Data'),
-          style: TextButton.styleFrom(
-            foregroundColor: const Color(0xFF2196F3),
-          ),
-        ),
       ],
     );
   }
@@ -424,66 +494,87 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Widget _buildRecentActivity(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'Recent Activity',
-          style: TextStyle(
-            fontSize: 18,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        const SizedBox(height: 16),
-        Card(
-          elevation: 2,
-          child: ListView.separated(
-            shrinkWrap: true,
-            physics: const NeverScrollableScrollPhysics(),
-            itemCount: 2,
-            separatorBuilder: (context, index) => const Divider(),
-            itemBuilder: (context, index) {
-              final List<Map<String, dynamic>> activities = [
-                {
-                  'icon': Icons.medication,
-                  'title': 'Medication Reminder',
-                  'description': 'Take Metformin 500mg',
-                  'time': '2 hours ago',
-                  'color': Colors.blue,
-                  'isRecommendation': false,
-                },
-                {
-                  'icon': Icons.local_hospital,
-                  'title': 'Health Check',
-                  'description': 'Regular health monitoring',
-                  'time': 'Yesterday',
-                  'color': Colors.green,
-                  'isRecommendation': false,
-                },
-              ];
+    return Consumer<VitalMeasurementsProvider>(
+      builder: (context, vitalProvider, child) {
+        // Update recent activities when provider changes
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          _loadRecentActivities();
+        });
 
-              return ListTile(
-                leading: CircleAvatar(
-                  backgroundColor: activities[index]['color'],
-                  child: Icon(
-                    activities[index]['icon'],
-                    color: Colors.white,
-                  ),
-                ),
-                title: Text(activities[index]['title']),
-                subtitle: Text(activities[index]['description']),
-                trailing: Text(
-                  activities[index]['time'],
-                  style: const TextStyle(
-                    color: Colors.grey,
-                    fontSize: 12,
-                  ),
-                ),
-              );
-            },
-          ),
-        ),
-      ],
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Recent Activity',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Card(
+              elevation: 2,
+              child: _recentActivities.isEmpty
+                  ? Padding(
+                      padding: const EdgeInsets.all(32.0),
+                      child: Column(
+                        children: [
+                          Icon(
+                            Icons.timeline,
+                            size: 48,
+                            color: Colors.grey.shade400,
+                          ),
+                          const SizedBox(height: 16),
+                          Text(
+                            'No recent activity',
+                            style: TextStyle(
+                              fontSize: 16,
+                              color: Colors.grey.shade600,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Text(
+                            'Start logging your symptoms or vitals to see your health activity here.',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.grey.shade500,
+                            ),
+                          ),
+                        ],
+                      ),
+                    )
+                  : ListView.separated(
+                      shrinkWrap: true,
+                      physics: const NeverScrollableScrollPhysics(),
+                      itemCount: _recentActivities.length,
+                      separatorBuilder: (context, index) => const Divider(),
+                      itemBuilder: (context, index) {
+                        final activity = _recentActivities[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: activity['color'],
+                            child: Icon(
+                              activity['icon'],
+                              color: Colors.white,
+                            ),
+                          ),
+                          title: Text(activity['title']),
+                          subtitle: Text(activity['description']),
+                          trailing: Text(
+                            activity['time'],
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 12,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        );
+      },
     );
   }
 

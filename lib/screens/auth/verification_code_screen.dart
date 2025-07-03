@@ -198,6 +198,7 @@ class _VerificationCodeScreenState extends State<VerificationCodeScreen> {
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
                       maxLength: 1,
+                      obscureText: true,
                       style: const TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,

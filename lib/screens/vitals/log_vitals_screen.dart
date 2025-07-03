@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../models/vital_measurement.dart';
-import '../../services/camera_scan_service.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/vital_measurements_provider.dart';
 import '../../services/api_service.dart';
@@ -149,31 +148,6 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
     }
   }
 
-  Future<void> _scanValue() async {
-    try {
-      final scannedValue =
-          await CameraScanService.showScanDialog(context, _selectedVitalType);
-      if (scannedValue != null && scannedValue.isNotEmpty) {
-        // Log camera-scanned value to terminal/console
-        print('==========================================');
-        print('CAMERA SCAN RESULT - ${DateTime.now().toString()}');
-        print('==========================================');
-        print('Vital Type: $_selectedVitalType');
-        print('Scanned Value: $scannedValue');
-        print('Device: External Health Device (Camera Scan)');
-        print('==========================================');
-
-        setState(() {
-          _valueController.text = scannedValue;
-        });
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error scanning value: ${e.toString()}')),
-      );
-    }
-  }
-
   void _resetForm() {
     setState(() {
       _valueController.clear();
@@ -238,54 +212,36 @@ class _LogVitalsScreenState extends State<LogVitalsScreen> {
             },
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: TextFormField(
-                  controller: _valueController,
-                  decoration: InputDecoration(
-                    labelText: 'Value',
-                    hintText: 'e.g., ${_getPlaceholder()}',
-                    border: const OutlineInputBorder(),
-                    prefixIcon: const Icon(Icons.numbers),
-                    suffixText: _getUnit(),
-                  ),
-                  keyboardType: _selectedVitalType == 'Blood Pressure'
-                      ? TextInputType.text
-                      : TextInputType.numberWithOptions(decimal: true),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Please enter a value';
-                    }
+          TextFormField(
+            controller: _valueController,
+            decoration: InputDecoration(
+              labelText: 'Value',
+              hintText: 'e.g., ${_getPlaceholder()}',
+              border: const OutlineInputBorder(),
+              prefixIcon: const Icon(Icons.numbers),
+              suffixText: _getUnit(),
+            ),
+            keyboardType: _selectedVitalType == 'Blood Pressure'
+                ? TextInputType.text
+                : TextInputType.numberWithOptions(decimal: true),
+            validator: (value) {
+              if (value == null || value.isEmpty) {
+                return 'Please enter a value';
+              }
 
-                    // Special validation for blood pressure (format: 120/80)
-                    if (_selectedVitalType == 'Blood Pressure') {
-                      if (!RegExp(r'^\d+\/\d+$').hasMatch(value)) {
-                        return 'Enter in format: 120/80';
-                      }
-                    }
-                    // Validation for other numeric values
-                    else if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(value)) {
-                      return 'Please enter a valid number';
-                    }
+              // Special validation for blood pressure (format: 120/80)
+              if (_selectedVitalType == 'Blood Pressure') {
+                if (!RegExp(r'^\d+\/\d+$').hasMatch(value)) {
+                  return 'Enter in format: 120/80';
+                }
+              }
+              // Validation for other numeric values
+              else if (!RegExp(r'^\d+(\.\d+)?$').hasMatch(value)) {
+                return 'Please enter a valid number';
+              }
 
-                    return null;
-                  },
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                decoration: BoxDecoration(
-                  color: const Color(0xFF2196F3),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: IconButton(
-                  onPressed: _isLoading ? null : _scanValue,
-                  icon: const Icon(Icons.camera_alt, color: Colors.white),
-                  tooltip: 'Scan $_selectedVitalType',
-                ),
-              ),
-            ],
+              return null;
+            },
           ),
           const SizedBox(height: 16),
           TextFormField(

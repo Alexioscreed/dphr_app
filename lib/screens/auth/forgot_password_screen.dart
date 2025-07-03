@@ -104,7 +104,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Enter your email address and we\'ll send you a 6-digit verification code to reset your password.',
+            'Enter your email address and we\'ll send you an OTP to reset your password.',
             style: TextStyle(
               color: Colors.grey,
               fontSize: 16,
@@ -150,7 +150,7 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen> {
                     ),
                   )
                 : const Text(
-                    'Send Verification Code',
+                    'Send OTP',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
