@@ -452,25 +452,34 @@ class AuthService {
     try {
       final url = '${AppConfig.baseApiUrl}/auth/send-otp';
       debugPrint('Attempting to send OTP at: $url');
+      debugPrint('Request data: name=$name, email=$email, phone=$phoneNumber');
 
       final client = http.Client();
 
       try {
         final response = await client
             .post(
-              Uri.parse(url),
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: jsonEncode({
-                'name': name,
-                'email': email,
-                'phoneNumber': phoneNumber,
-                'password': password,
-              }),
-            )
-            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'name': name,
+            'email': email,
+            'phoneNumber': phoneNumber,
+            'password': password,
+          }),
+        )
+            .timeout(
+          Duration(seconds: AppConfig.otpTimeout),
+          onTimeout: () {
+            debugPrint(
+                'Send OTP request timed out after ${AppConfig.otpTimeout} seconds');
+            throw TimeoutException(
+                'Request timed out', Duration(seconds: AppConfig.otpTimeout));
+          },
+        );
 
         debugPrint('Send OTP response status: ${response.statusCode}');
         debugPrint('Send OTP response body: ${response.body}');
@@ -478,10 +487,13 @@ class AuthService {
         if (response.statusCode >= 200 && response.statusCode < 300) {
           final responseData = jsonDecode(response.body);
           if (responseData['success'] == true) {
-            debugPrint('OTP sent successfully');
+            debugPrint('OTP sent successfully - navigating to OTP screen');
             return true;
           } else {
-            throw Exception(responseData['message'] ?? 'Failed to send OTP');
+            final errorMessage =
+                responseData['message'] ?? 'Failed to send OTP';
+            debugPrint('OTP send failed: $errorMessage');
+            throw Exception(errorMessage);
           }
         } else {
           String errorMsg;
@@ -492,6 +504,8 @@ class AuthService {
           } catch (_) {
             errorMsg = 'Failed to send OTP with status: ${response.statusCode}';
           }
+          debugPrint(
+              'OTP send failed with status ${response.statusCode}: $errorMsg');
           throw Exception(errorMsg);
         }
       } finally {
@@ -507,7 +521,8 @@ class AuthService {
       } else if (e is http.ClientException) {
         throw Exception('Network error: ${e.message}. Please try again later.');
       } else if (e is TimeoutException) {
-        throw Exception('Connection timed out. Please try again later.');
+        throw Exception(
+            'Connection timed out after ${AppConfig.otpTimeout} seconds. Please try again later.');
       } else {
         rethrow;
       }
@@ -526,20 +541,28 @@ class AuthService {
       try {
         final response = await client
             .post(
-              Uri.parse(url),
-              headers: {
-                'Content-Type': 'application/json',
-                'Accept': 'application/json',
-              },
-              body: jsonEncode({
-                'name': name,
-                'email': email,
-                'phoneNumber': phoneNumber,
-                'password': password,
-                'otp': otp,
-              }),
-            )
-            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+          Uri.parse(url),
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode({
+            'name': name,
+            'email': email,
+            'phoneNumber': phoneNumber,
+            'password': password,
+            'otp': otp,
+          }),
+        )
+            .timeout(
+          Duration(seconds: AppConfig.otpTimeout),
+          onTimeout: () {
+            debugPrint(
+                'Verify OTP request timed out after ${AppConfig.otpTimeout} seconds');
+            throw TimeoutException(
+                'Request timed out', Duration(seconds: AppConfig.otpTimeout));
+          },
+        );
 
         debugPrint('Verify OTP response status: ${response.statusCode}');
         debugPrint('Verify OTP response body: ${response.body}');

@@ -66,17 +66,23 @@ class AuthProvider with ChangeNotifier {
   Future<bool> sendRegistrationOtp(
       String name, String email, String phoneNumber, String password) async {
     _setLoading(true);
+    _error = ''; // Clear any previous errors
+    debugPrint('AuthProvider: Starting sendRegistrationOtp...');
+
     try {
       await _authService.sendRegistrationOtp(
           name, email, phoneNumber, password);
+      debugPrint('AuthProvider: OTP sent successfully');
       _error = '';
       return true;
     } catch (e) {
       _error = e.toString();
-      debugPrint('Send OTP error: $_error');
+      debugPrint('AuthProvider: Send OTP error: $_error');
+      notifyListeners(); // Notify UI about the error
       return false;
     } finally {
       _setLoading(false);
+      debugPrint('AuthProvider: sendRegistrationOtp completed');
     }
   }
 

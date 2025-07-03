@@ -31,48 +31,165 @@ class _RegisterScreenState extends State<RegisterScreen> {
     super.dispose();
   }
 
-  Future<void> _sendOtp() async {
-    if (_formKey.currentState!.validate()) {
+  // Validate form data before sending OTP
+  bool _validateFormData() {
+    final name = _nameController.text.trim();
+    final email = _emailController.text.trim();
+    final phone = _phoneController.text.trim();
+    final password = _passwordController.text;
+    final confirmPassword = _confirmPasswordController.text;
+
+    if (name.isEmpty) {
       setState(() {
-        _errorMessage = '';
+        _errorMessage = 'Please enter your full name';
       });
+      return false;
+    }
 
-      try {
-        final authProvider = Provider.of<AuthProvider>(context, listen: false);
+    if (email.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter your email address';
+      });
+      return false;
+    }
 
-        final success = await authProvider.sendRegistrationOtp(
-          _nameController.text.trim(),
-          _emailController.text.trim(),
-          _phoneController.text.trim(),
-          _passwordController.text,
+    if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(email)) {
+      setState(() {
+        _errorMessage = 'Please enter a valid email address';
+      });
+      return false;
+    }
+
+    if (phone.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter your phone number';
+      });
+      return false;
+    }
+
+    // Validate Tanzanian phone number format
+    String cleanPhone = phone.replaceAll(RegExp(r'[^\d]'), '');
+    if (cleanPhone.length < 9 || cleanPhone.length > 12) {
+      setState(() {
+        _errorMessage =
+            'Please enter a valid Tanzanian phone number (e.g., 0625387142)';
+      });
+      return false;
+    }
+
+    if (password.isEmpty) {
+      setState(() {
+        _errorMessage = 'Please enter a password';
+      });
+      return false;
+    }
+
+    if (password.length < 6) {
+      setState(() {
+        _errorMessage = 'Password must be at least 6 characters long';
+      });
+      return false;
+    }
+
+    if (confirmPassword != password) {
+      setState(() {
+        _errorMessage = 'Passwords do not match';
+      });
+      return false;
+    }
+
+    return true;
+  }
+
+  Future<void> _sendOtp() async {
+    // First validate form data
+    if (!_formKey.currentState!.validate() || !_validateFormData()) {
+      return;
+    }
+
+    setState(() {
+      _errorMessage = '';
+    });
+
+    try {
+      debugPrint('Register Screen: Starting OTP send process...');
+      debugPrint('Register Screen: Name: ${_nameController.text.trim()}');
+      debugPrint('Register Screen: Email: ${_emailController.text.trim()}');
+      debugPrint('Register Screen: Phone: ${_phoneController.text.trim()}');
+
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+
+      debugPrint('Register Screen: Calling sendRegistrationOtp...');
+      final success = await authProvider.sendRegistrationOtp(
+        _nameController.text.trim(),
+        _emailController.text.trim(),
+        _phoneController.text.trim(),
+        _passwordController.text,
+      );
+
+      if (!mounted) return;
+
+      debugPrint('Register Screen: OTP send result: $success');
+
+      if (success) {
+        debugPrint('Register Screen: Success! Navigating to OTP screen...');
+        // Show success message briefly
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Verification code sent! Check your phone.'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
         );
+
+        // Navigate to OTP verification screen with a small delay to show the success message
+        await Future.delayed(const Duration(milliseconds: 500));
 
         if (!mounted) return;
 
-        if (success) {
-          // Navigate to OTP verification screen
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => RegistrationOtpScreen(
-                name: _nameController.text.trim(),
-                email: _emailController.text.trim(),
-                phoneNumber: _phoneController.text.trim(),
-                password: _passwordController.text,
-              ),
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => RegistrationOtpScreen(
+              name: _nameController.text.trim(),
+              email: _emailController.text.trim(),
+              phoneNumber: _phoneController.text.trim(),
+              password: _passwordController.text,
             ),
-          );
-        } else {
-          // Show error message
-          setState(() {
-            _errorMessage = authProvider.error;
-          });
-        }
-      } catch (e) {
+          ),
+        );
+      } else {
+        debugPrint(
+            'Register Screen: Failed to send OTP. Error: ${authProvider.error}');
         // Show error message
         setState(() {
-          _errorMessage = e.toString();
+          _errorMessage = authProvider.error.isNotEmpty
+              ? authProvider.error
+              : 'Failed to send verification code. Please try again.';
         });
+
+        // Also show a snackbar for immediate feedback
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(_errorMessage),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 5),
+          ),
+        );
       }
+    } catch (e) {
+      debugPrint('Register Screen: Exception occurred: $e');
+      // Show error message
+      setState(() {
+        _errorMessage = 'An unexpected error occurred: ${e.toString()}';
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(_errorMessage),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 5),
+        ),
+      );
     }
   }
 
