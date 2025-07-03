@@ -35,6 +35,12 @@ class _SharedRecordsScreenState extends State<SharedRecordsScreen> {
 
     try {
       final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+
+      // Wait for the provider to be initialized if it's not yet
+      if (!apiProvider.isInitialized) {
+        await apiProvider.initialize();
+      }
+
       await apiProvider.fetchSharedRecords();
 
       setState(() {
@@ -66,8 +72,7 @@ class _SharedRecordsScreenState extends State<SharedRecordsScreen> {
 
     return records.where((record) {
       return record.recipientName.toLowerCase().contains(_searchQuery) ||
-          record.recipientEmail.toLowerCase().contains(_searchQuery) ||
-          record.recordType.toLowerCase().contains(_searchQuery);
+          record.recipientEmail.toLowerCase().contains(_searchQuery);
     }).toList();
   }
 
@@ -89,19 +94,19 @@ class _SharedRecordsScreenState extends State<SharedRecordsScreen> {
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
-                hintText: 'Search by recipient, email, or record type',
+                hintText: 'Search by recipient name or email',
                 prefixIcon: const Icon(Icons.search),
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(10),
                 ),
                 suffixIcon: _searchQuery.isNotEmpty
                     ? IconButton(
-                  icon: const Icon(Icons.clear),
-                  onPressed: () {
-                    _searchController.clear();
-                    _onSearch('');
-                  },
-                )
+                        icon: const Icon(Icons.clear),
+                        onPressed: () {
+                          _searchController.clear();
+                          _onSearch('');
+                        },
+                      )
                     : null,
               ),
               onChanged: _onSearch,
@@ -111,13 +116,6 @@ class _SharedRecordsScreenState extends State<SharedRecordsScreen> {
             child: _buildRecordsList(apiProvider),
           ),
         ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Navigate to share record screen
-        },
-        backgroundColor: const Color(0xFF2196F3), // Blue color
-        child: const Icon(Icons.share),
       ),
     );
   }
@@ -163,13 +161,42 @@ class _SharedRecordsScreenState extends State<SharedRecordsScreen> {
     final filteredRecords = _getFilteredRecords(apiProvider.sharedRecords);
 
     if (filteredRecords.isEmpty) {
-      return const Center(
-        child: Text(
-          'No shared records found',
-          style: TextStyle(
-            fontSize: 16,
-            fontWeight: FontWeight.bold,
-          ),
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.share_outlined,
+              size: 64,
+              color: Colors.grey[400],
+            ),
+            const SizedBox(height: 16),
+            Text(
+              'No shared records found',
+              style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: Colors.grey[600],
+              ),
+            ),
+            const SizedBox(height: 8),
+            Text(
+              'Shared records are created from your medical visits and health data',
+              style: TextStyle(
+                fontSize: 14,
+                color: Colors.grey[500],
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: _fetchSharedRecords,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF2196F3),
+              ),
+              child: const Text('Refresh'),
+            ),
+          ],
         ),
       );
     }
@@ -205,24 +232,23 @@ class _SharedRecordsScreenState extends State<SharedRecordsScreen> {
             const SizedBox(height: 8),
             Text('Email: ${record.recipientEmail}'),
             const SizedBox(height: 4),
-            Text('Record Type: ${record.recordType}'),
+            Text('Visit Date: ${_formatDate(record.sharedDate)}'),
             const SizedBox(height: 4),
-            Text('Shared Date: ${_formatDate(record.sharedDate)}'),
-            const SizedBox(height: 4),
-            Text(
-              'Status: ${record.status}',
-              style: TextStyle(
-                color: record.status == 'Active' ? Colors.green : Colors.red,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            Text('Status: ${record.status}',
+                style: TextStyle(
+                  color: record.status == 'Complete'
+                      ? Colors.green
+                      : Colors.orange,
+                  fontWeight: FontWeight.w500,
+                )),
           ],
         ),
         trailing: const Icon(Icons.chevron_right),
         onTap: () {
           Navigator.of(context).push(
             MaterialPageRoute(
-              builder: (context) => SharedRecordDetailScreen(recordId: record.id),
+              builder: (context) =>
+                  SharedRecordDetailScreen(recordId: record.id),
             ),
           );
         },

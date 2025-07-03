@@ -1,21 +1,33 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import '../services/auth_service.dart';
+import '../services/shared_records_service.dart';
 import '../models/shared_record.dart';
 
 class ApiProvider with ChangeNotifier {
-  late ApiService _apiService;
+  ApiService? _apiService;
+  SharedRecordsService? _sharedRecordsService;
   final AuthService _authService = AuthService();
   bool _isInitialized = false;
   bool _isLoading = false;
   String _error = '';
   List<SharedRecord> _sharedRecords = [];
 
+  // Constructor that automatically initializes
+  ApiProvider() {
+    _initializeAsync();
+  }
+
   bool get isInitialized => _isInitialized;
   bool get isLoading => _isLoading;
   String get error => _error;
-  ApiService get apiService => _apiService;
+  ApiService? get apiService => _apiService;
   List<SharedRecord> get sharedRecords => [..._sharedRecords];
+
+  // Private async initialization method
+  Future<void> _initializeAsync() async {
+    await initialize();
+  }
 
   // Initialize the API provider
   Future<void> initialize() async {
@@ -28,6 +40,9 @@ class ApiProvider with ChangeNotifier {
 
       // Initialize API service with auth service
       _apiService = ApiService(_authService);
+
+      // Initialize shared records service
+      _sharedRecordsService = SharedRecordsService(_apiService!, _authService);
 
       _isInitialized = true;
       _isLoading = false;
@@ -71,50 +86,23 @@ class ApiProvider with ChangeNotifier {
 
   // Fetch shared records
   Future<void> fetchSharedRecords() async {
+    // Ensure the provider is initialized first
+    if (!_isInitialized) {
+      await initialize();
+    }
+
     _isLoading = true;
     _error = '';
     notifyListeners();
 
     try {
-      // In a real app, this would call the API service
-      await Future.delayed(const Duration(seconds: 2)); // Simulate API call
+      // Check if shared records service is available
+      if (_sharedRecordsService == null) {
+        throw Exception('Shared records service not initialized');
+      }
 
-      // Sample data for development - updated to patient-to-person sharing
-      _sharedRecords = [
-        SharedRecord(
-          id: '1',
-          recipientName: 'Dr. Sarah Johnson',
-          recipientEmail: 'sarah.johnson@hospital.com',
-          recordType: 'Lab Results',
-          sharedDate: DateTime.now().subtract(const Duration(days: 2)),
-          expiryDate: DateTime.now().add(const Duration(days: 30)),
-          status: 'Active',
-          description: 'Blood work results from annual checkup',
-          files: ['lab_results.pdf'],
-        ),
-        SharedRecord(
-          id: '2',
-          recipientName: 'Dr. Michael Brown',
-          recipientEmail: 'michael.brown@clinic.org',
-          recordType: 'Prescription',
-          sharedDate: DateTime.now().subtract(const Duration(days: 5)),
-          expiryDate: DateTime.now().add(const Duration(days: 25)),
-          status: 'Active',
-          description: 'Prescription for hypertension medication',
-          files: ['prescription.pdf'],
-        ),
-        SharedRecord(
-          id: '3',
-          recipientName: 'Emma Davis (Family)',
-          recipientEmail: 'emma.davis@example.com',
-          recordType: 'Radiology',
-          sharedDate: DateTime.now().subtract(const Duration(days: 10)),
-          expiryDate: DateTime.now().add(const Duration(days: 20)),
-          status: 'Active',
-          description: 'Chest X-ray results',
-          files: ['xray_report.pdf', 'xray_image.jpg'],
-        ),
-      ];
+      // Fetch real shared records from health data
+      _sharedRecords = await _sharedRecordsService!.getSharedRecords();
 
       _isLoading = false;
       notifyListeners();
@@ -134,12 +122,38 @@ class ApiProvider with ChangeNotifier {
     }
   }
 
+  // Add a new shared record when health data is successfully shared
+  void addSharedRecord({
+    required String recipientName,
+    required String recipientEmail,
+    required String visitId,
+    required DateTime visitDate,
+    String? purpose,
+  }) {
+    final newRecord = SharedRecord(
+      id: 'shared_${DateTime.now().millisecondsSinceEpoch}',
+      recipientName: recipientName,
+      recipientEmail: recipientEmail,
+      recordType: 'Visit',
+      sharedDate: visitDate,
+      expiryDate: DateTime.now().add(Duration(days: 30)),
+      status: 'Complete',
+      description: purpose ?? 'Health visit summary shared',
+      files: ['visit_summary_${visitId}.pdf'],
+    );
+
+    _sharedRecords.insert(0, newRecord); // Add to beginning of list
+    notifyListeners();
+  }
+
   // Reset API provider state
   void reset() {
     _isInitialized = false;
     _isLoading = false;
     _error = '';
     _sharedRecords = [];
+    _apiService = null;
+    _sharedRecordsService = null;
     notifyListeners();
   }
 }

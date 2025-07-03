@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/visits_health_provider.dart';
+import '../../providers/api_provider.dart';
 import '../../services/pdf_service.dart';
 import '../../services/email_service.dart';
 
@@ -117,6 +118,38 @@ DPHR Team
 
         if (!emailSent) {
           throw Exception('Failed to send email to recipient');
+        }
+
+        // Add the shared record to the shared records list
+        final apiProvider = Provider.of<ApiProvider>(context, listen: false);
+
+        // Parse visit date for the shared record
+        DateTime sharedVisitDate = DateTime.now();
+        if (selectedVisit.startDate != null) {
+          try {
+            sharedVisitDate = DateTime.parse(selectedVisit.startDate!);
+          } catch (e) {
+            sharedVisitDate = DateTime.now();
+          }
+        }
+
+        apiProvider.addSharedRecord(
+          recipientName: _recipientNameController.text,
+          recipientEmail: _recipientEmailController.text,
+          visitId: selectedVisit.visitUuid ?? 'unknown',
+          visitDate: sharedVisitDate,
+          purpose: _purposeController.text,
+        );
+
+        // Show success message about adding to shared records
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Record added to Shared Records'),
+              backgroundColor: Colors.green,
+              duration: Duration(seconds: 2),
+            ),
+          );
         }
 
         setState(() {

@@ -69,31 +69,11 @@ class NotificationProvider with ChangeNotifier {
       // Simulate API call
       await Future.delayed(const Duration(seconds: 1));
 
-      // Sample notifications
-      _notifications = [
-        Notification(
-          id: '1',
-          title: 'Health Check Reminder',
-          message: 'Remember to check your blood pressure today.',
-          date: DateTime.now().subtract(const Duration(hours: 2)),
-          type: 'health_risk',
-        ),
-        Notification(
-          id: '2',
-          title: 'Medication Reminder',
-          message: 'Time to take your medication.',
-          date: DateTime.now().subtract(const Duration(hours: 5)),
-          type: 'medication',
-        ),
-        Notification(
-          id: '3',
-          title: 'Health Record Updated',
-          message: 'Your health record has been updated with new lab results.',
-          date: DateTime.now().subtract(const Duration(days: 1)),
-          isRead: true,
-          type: 'record',
-        ),
-      ];
+      // Generate daily health check reminder
+      await _generateDailyHealthCheckReminder();
+
+      // Load existing notifications from storage
+      await _loadStoredNotifications();
 
       _isLoading = false;
       notifyListeners();
@@ -234,5 +214,49 @@ class NotificationProvider with ChangeNotifier {
     notifyListeners();
 
     // In a real app, you would save this to a database or API
+  }
+
+  // Generate daily health check reminder
+  Future<void> _generateDailyHealthCheckReminder() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastHealthCheckKey = 'last_health_check_reminder';
+    final lastHealthCheckDate = prefs.getString(lastHealthCheckKey);
+
+    final today = DateTime.now();
+    final todayString = '${today.year}-${today.month}-${today.day}';
+
+    // Check if we already sent a reminder today
+    if (lastHealthCheckDate != todayString) {
+      final healthCheckNotification = Notification(
+        id: 'daily_health_check_${today.millisecondsSinceEpoch}',
+        title: 'Daily Health Check Reminder',
+        message:
+            'Remember to monitor your health today. Check your vital signs and log any symptoms.',
+        date: today,
+        type: 'health_check',
+      );
+
+      _notifications.insert(0, healthCheckNotification);
+
+      // Save that we sent the reminder today
+      await prefs.setString(lastHealthCheckKey, todayString);
+    }
+  }
+
+  // Load stored notifications (placeholder for future database integration)
+  Future<void> _loadStoredNotifications() async {
+    // In a real app, this would load notifications from a database
+    // For now, we rely on the daily health check reminder being generated above
+
+    // Future: Load user's notification history from database
+    // Future: Load personalized health recommendations
+  }
+
+  // Check and create daily health reminder (can be called multiple times safely)
+  Future<void> checkDailyHealthReminder() async {
+    if (!_notificationsEnabled) return;
+
+    await _generateDailyHealthCheckReminder();
+    notifyListeners();
   }
 }

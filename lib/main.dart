@@ -8,6 +8,7 @@ import 'providers/notification_provider.dart' as notifications;
 import 'providers/api_provider.dart';
 import 'providers/theme_provider.dart';
 import 'providers/vital_measurements_provider.dart';
+import 'providers/profile_provider.dart';
 import 'services/auth_service.dart';
 import 'services/api_service.dart';
 import 'services/medical_records_service.dart';
@@ -17,6 +18,7 @@ import 'services/prescription_service.dart';
 import 'services/connectivity_service.dart';
 import 'services/cache_service.dart';
 import 'services/email_service.dart';
+import 'services/profile_service.dart';
 
 void main() async {
   // Ensure Flutter is initialized
@@ -105,6 +107,14 @@ void main() async {
         ChangeNotifierProvider(create: (_) => ApiProvider()),
         ChangeNotifierProvider<ThemeProvider>(create: (_) => ThemeProvider()),
         ChangeNotifierProvider(create: (_) => VitalMeasurementsProvider()),
+        ChangeNotifierProvider(
+          create: (context) => ProfileProvider(
+            ProfileService(
+              ApiService(AuthService()),
+              AuthService(),
+            ),
+          ),
+        ),
         Provider<EmailService>(
           create: (context) => EmailService(context.read<AuthService>()),
         ),

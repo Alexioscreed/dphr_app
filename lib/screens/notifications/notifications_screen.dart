@@ -19,6 +19,9 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
               listen: false);
       if (!notificationProvider.isInitialized) {
         notificationProvider.initialize();
+      } else {
+        // Check for daily health reminder even if already initialized
+        notificationProvider.checkDailyHealthReminder();
       }
     });
   }
@@ -252,6 +255,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
         iconData = Icons.warning;
         iconColor = Colors.orange;
         break;
+      case 'health_check':
+        iconData = Icons.health_and_safety;
+        iconColor = const Color(0xFF2196F3);
+        break;
       case 'medication':
         iconData = Icons.medication;
         iconColor = Colors.green;
@@ -280,6 +287,10 @@ class _NotificationsScreenState extends State<NotificationsScreen> {
       case 'health_risk':
         label = 'Health Alert';
         color = Colors.orange;
+        break;
+      case 'health_check':
+        label = 'Health Check';
+        color = const Color(0xFF2196F3);
         break;
       case 'medication':
         label = 'Medication';

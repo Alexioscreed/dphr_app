@@ -3,8 +3,6 @@ import 'package:provider/provider.dart';
 import '../health_records/visits_health_records_screen.dart';
 import '../progress/health_progress_screen.dart';
 import '../settings/settings_screen.dart';
-import '../shared_records/shared_records_screen.dart';
-import '../testing/medical_records_test_screen.dart';
 import '../notifications/notifications_screen.dart';
 import '../../widgets/notification_badge.dart';
 import '../sharing/share_data_screen.dart';
@@ -14,7 +12,6 @@ import '../../providers/notification_provider.dart' as notifications;
 import '../../providers/vital_measurements_provider.dart';
 import '../../services/api_service.dart';
 import '../auth/login_screen.dart';
-import '../health_records/visit_details_demo_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({Key? key}) : super(key: key);
@@ -48,6 +45,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
 
     return Scaffold(
+      backgroundColor:
+          isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
       appBar: AppBar(
         title: const Text(
           'DPHR Dashboard',
@@ -72,26 +71,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 },
               );
             },
-          ),
-          IconButton(
-            icon: const Icon(Icons.cloud_download),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (context) => const SharedRecordsScreen()),
-              );
-            },
-            tooltip: 'Shared Records',
-          ),
-          IconButton(
-            icon: const Icon(Icons.bug_report),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (context) => const MedicalRecordsTestScreen()),
-              );
-            },
-            tooltip: 'Medical Records Test',
           ),
           IconButton(
             icon: const Icon(Icons.settings),
@@ -312,11 +291,13 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Widget _buildUserGreeting(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     final authProvider = Provider.of<AuthProvider>(context);
     final user = authProvider.currentUser;
 
     return Card(
       elevation: 2,
+      color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Row(
@@ -341,16 +322,17 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
               children: [
                 Text(
                   'Hello, ${user?.name ?? 'User'}',
-                  style: const TextStyle(
+                  style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
+                    color: isDarkMode ? Colors.white : Colors.black,
                   ),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   user?.email ?? 'user@example.com',
-                  style: const TextStyle(
-                    color: Colors.grey,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.grey[400] : Colors.grey,
                   ),
                 ),
               ],
@@ -362,17 +344,19 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Widget _buildHealthSummary() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
-            const Text(
+            Text(
               'Health Summary',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
             if (_isLoadingVitals)
@@ -459,8 +443,10 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     required String value,
     required Color color,
   }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 2,
+      color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Column(
@@ -474,17 +460,18 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
             const SizedBox(height: 8),
             Text(
               title,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 14,
-                color: Colors.grey,
+                color: isDarkMode ? Colors.grey[400] : Colors.grey,
               ),
             ),
             const SizedBox(height: 4),
             Text(
               value,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
           ],
@@ -494,6 +481,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Widget _buildRecentActivity(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Consumer<VitalMeasurementsProvider>(
       builder: (context, vitalProvider, child) {
         // Update recent activities when provider changes
@@ -504,16 +492,18 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Text(
+            Text(
               'Recent Activity',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
             ),
             const SizedBox(height: 16),
             Card(
               elevation: 2,
+              color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
               child: _recentActivities.isEmpty
                   ? Padding(
                       padding: const EdgeInsets.all(32.0),
@@ -522,14 +512,18 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                           Icon(
                             Icons.timeline,
                             size: 48,
-                            color: Colors.grey.shade400,
+                            color: isDarkMode
+                                ? Colors.grey[600]
+                                : Colors.grey.shade400,
                           ),
                           const SizedBox(height: 16),
                           Text(
                             'No recent activity',
                             style: TextStyle(
                               fontSize: 16,
-                              color: Colors.grey.shade600,
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey.shade600,
                               fontWeight: FontWeight.bold,
                             ),
                           ),
@@ -538,7 +532,9 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                             'Start logging your symptoms or vitals to see your health activity here.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
-                              color: Colors.grey.shade500,
+                              color: isDarkMode
+                                  ? Colors.grey[500]
+                                  : Colors.grey.shade500,
                             ),
                           ),
                         ],
@@ -548,7 +544,9 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
                       itemCount: _recentActivities.length,
-                      separatorBuilder: (context, index) => const Divider(),
+                      separatorBuilder: (context, index) => Divider(
+                        color: isDarkMode ? Colors.grey[700] : Colors.grey[300],
+                      ),
                       itemBuilder: (context, index) {
                         final activity = _recentActivities[index];
                         return ListTile(
@@ -559,12 +557,25 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                               color: Colors.white,
                             ),
                           ),
-                          title: Text(activity['title']),
-                          subtitle: Text(activity['description']),
+                          title: Text(
+                            activity['title'],
+                            style: TextStyle(
+                              color: isDarkMode ? Colors.white : Colors.black,
+                            ),
+                          ),
+                          subtitle: Text(
+                            activity['description'],
+                            style: TextStyle(
+                              color: isDarkMode
+                                  ? Colors.grey[400]
+                                  : Colors.grey[600],
+                            ),
+                          ),
                           trailing: Text(
                             activity['time'],
-                            style: const TextStyle(
-                              color: Colors.grey,
+                            style: TextStyle(
+                              color:
+                                  isDarkMode ? Colors.grey[500] : Colors.grey,
                               fontSize: 12,
                             ),
                           ),
@@ -579,14 +590,16 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
   }
 
   Widget _buildQuickActions(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Quick Actions',
           style: TextStyle(
             fontSize: 18,
             fontWeight: FontWeight.bold,
+            color: isDarkMode ? Colors.white : Colors.black,
           ),
         ),
         const SizedBox(height: 24),
@@ -606,12 +619,12 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
                 },
               ),
               _buildActionButton(
-                icon: Icons.medical_information,
-                label: 'Visit\nDetails',
+                icon: Icons.trending_up,
+                label: 'Health\nProgress',
                 onTap: () {
                   Navigator.of(context).push(
                     MaterialPageRoute(
-                        builder: (context) => const VisitDetailsDemoScreen()),
+                        builder: (context) => const HealthProgressScreen()),
                   );
                 },
               ),
@@ -637,6 +650,7 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
     required String label,
     required VoidCallback onTap,
   }) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(8),
@@ -656,9 +670,10 @@ class _DashboardHomeScreenState extends State<DashboardHomeScreen> {
             const SizedBox(height: 10),
             Text(
               label,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 12,
                 height: 1.2,
+                color: isDarkMode ? Colors.white : Colors.black,
               ),
               textAlign: TextAlign.center,
               maxLines: 2,

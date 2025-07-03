@@ -176,7 +176,10 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
+      backgroundColor: isDarkMode ? const Color(0xFF121212) : Colors.white,
       appBar: AppBar(
         title: const Text('Verify Phone Number'),
         backgroundColor: const Color(0xFF2196F3),
@@ -195,19 +198,20 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
                 color: Color(0xFF2196F3),
               ),
               const SizedBox(height: 32),
-              const Text(
+              Text(
                 'Enter Verification Code',
                 style: TextStyle(
                   fontSize: 24,
                   fontWeight: FontWeight.bold,
+                  color: isDarkMode ? Colors.white : Colors.black,
                 ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 16),
               Text(
                 'We\'ve sent a 6-digit verification code to\n${widget.phoneNumber}',
-                style: const TextStyle(
-                  color: Colors.grey,
+                style: TextStyle(
+                  color: isDarkMode ? Colors.grey[300] : Colors.grey,
                   fontSize: 16,
                 ),
                 textAlign: TextAlign.center,
@@ -216,7 +220,7 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
               Text(
                 'This verifies that you are registered in the hospital system.',
                 style: TextStyle(
-                  color: Colors.grey.shade600,
+                  color: isDarkMode ? Colors.grey[400] : Colors.grey.shade600,
                   fontSize: 14,
                 ),
                 textAlign: TextAlign.center,
@@ -234,17 +238,31 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
                       keyboardType: TextInputType.number,
                       textAlign: TextAlign.center,
                       maxLength: 1,
-                      style: const TextStyle(
+                      obscureText: true,
+                      style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
+                        color: isDarkMode ? Colors.white : Colors.black,
                       ),
-                      decoration: const InputDecoration(
+                      decoration: InputDecoration(
                         counterText: '',
-                        border: OutlineInputBorder(),
-                        focusedBorder: OutlineInputBorder(
+                        border: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.grey[600]! : Colors.grey,
+                          ),
+                        ),
+                        enabledBorder: OutlineInputBorder(
+                          borderSide: BorderSide(
+                            color: isDarkMode ? Colors.grey[600]! : Colors.grey,
+                          ),
+                        ),
+                        focusedBorder: const OutlineInputBorder(
                           borderSide:
                               BorderSide(color: Color(0xFF2196F3), width: 2),
                         ),
+                        filled: true,
+                        fillColor:
+                            isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
                       ),
                       inputFormatters: [
                         FilteringTextInputFormatter.digitsOnly,
@@ -286,9 +304,11 @@ class _RegistrationOtpScreenState extends State<RegistrationOtpScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text(
+                  Text(
                     'Didn\'t receive the code? ',
-                    style: TextStyle(color: Colors.grey),
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[400] : Colors.grey,
+                    ),
                   ),
                   TextButton(
                     onPressed: _isResending ? null : _resendOtp,

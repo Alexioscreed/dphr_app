@@ -2,9 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/theme_provider.dart';
 import '../../providers/auth_provider.dart';
-import '../../providers/health_record_provider.dart';
-import '../../services/connectivity_service.dart';
 import '../auth/login_screen.dart';
+import 'profile_information_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({Key? key}) : super(key: key);
@@ -14,10 +13,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notificationsEnabled = true;
-  bool _emailNotificationsEnabled = true;
-  bool _smsNotificationsEnabled = false;
-  bool _biometricEnabled = true;
   String _selectedLanguage = 'English';
 
   final List<String> _languages = [
@@ -41,35 +36,23 @@ class _SettingsScreenState extends State<SettingsScreen> {
         backgroundColor: isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
         foregroundColor: isDarkMode ? Colors.white : Colors.black,
       ),
+      backgroundColor:
+          isDarkMode ? const Color(0xFF121212) : const Color(0xFFF5F5F5),
       body: ListView(
         padding: const EdgeInsets.all(16.0),
         children: [
           _buildSectionHeader('Account'),
           _buildAccountSettings(),
           const SizedBox(height: 24),
-
           _buildSectionHeader('Appearance'),
           _buildAppearanceSettings(themeProvider),
           const SizedBox(height: 24),
-
-          _buildSectionHeader('Notifications'),
-          _buildNotificationSettings(),
-          const SizedBox(height: 24),          _buildSectionHeader('Security'),
-          _buildSecuritySettings(),
-          const SizedBox(height: 24),
-
-          _buildSectionHeader('Data Management'),
-          _buildDataManagementSettings(),
-          const SizedBox(height: 24),
-
           _buildSectionHeader('Language'),
           _buildLanguageSettings(),
           const SizedBox(height: 24),
-
           _buildSectionHeader('About'),
           _buildAboutSettings(),
           const SizedBox(height: 24),
-
           _buildLogoutButton(authProvider),
         ],
       ),
@@ -78,48 +61,50 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Rest of the methods remain the same
   Widget _buildSectionHeader(String title) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.only(bottom: 8.0),
       child: Text(
         title,
-        style: const TextStyle(
+        style: TextStyle(
           fontSize: 18,
           fontWeight: FontWeight.bold,
-          color: Color(0xFF2196F3),
+          color: isDarkMode ? const Color(0xFF90CAF9) : const Color(0xFF2196F3),
         ),
       ),
     );
   }
 
   Widget _buildAccountSettings() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 2,
+      color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
       child: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.person),
-            title: const Text('Profile Information'),
-            trailing: const Icon(Icons.chevron_right),
+            leading: Icon(
+              Icons.person,
+              color: isDarkMode
+                  ? const Color(0xFF90CAF9)
+                  : const Color(0xFF2196F3),
+            ),
+            title: Text(
+              'Profile Information',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey,
+            ),
             onTap: () {
-              // Navigate to profile screen
-            },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.medical_services),
-            title: const Text('Medical Information'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to medical info screen
-            },
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.contact_phone),
-            title: const Text('Emergency Contacts'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to emergency contacts screen
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (context) => const ProfileInformationScreen(),
+                ),
+              );
             },
           ),
         ],
@@ -128,28 +113,60 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAppearanceSettings(ThemeProvider themeProvider) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 2,
+      color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
       child: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.brightness_6),
-            title: const Text('Theme Mode'),
+            leading: Icon(
+              Icons.brightness_6,
+              color: isDarkMode
+                  ? const Color(0xFF90CAF9)
+                  : const Color(0xFF2196F3),
+            ),
+            title: Text(
+              'Theme Mode',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
             trailing: DropdownButton<AppThemeMode>(
               value: themeProvider.themeMode,
               underline: const SizedBox(),
+              dropdownColor:
+                  isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
               items: [
                 DropdownMenuItem(
                   value: AppThemeMode.system,
-                  child: const Text('System'),
+                  child: Text(
+                    'System',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: AppThemeMode.light,
-                  child: const Text('Light'),
+                  child: Text(
+                    'Light',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
                 ),
                 DropdownMenuItem(
                   value: AppThemeMode.dark,
-                  child: const Text('Dark'),
+                  child: Text(
+                    'Dark',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
                 ),
               ],
               onChanged: (value) {
@@ -163,257 +180,48 @@ class _SettingsScreenState extends State<SettingsScreen> {
               },
             ),
           ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.text_fields),
-            title: const Text('Text Size'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to text size settings
-            },
-          ),
         ],
       ),
-    );
-  }
-
-  Widget _buildNotificationSettings() {
-    return Card(
-      elevation: 2,
-      child: Column(
-        children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.notifications),
-            title: const Text('Enable Notifications'),
-            value: _notificationsEnabled,
-            onChanged: (value) {
-              setState(() {
-                _notificationsEnabled = value;
-              });
-            },
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            secondary: const Icon(Icons.email),
-            title: const Text('Email Notifications'),
-            value: _emailNotificationsEnabled,
-            onChanged: _notificationsEnabled ? (value) {
-              setState(() {
-                _emailNotificationsEnabled = value;
-              });
-            } : null,
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            secondary: const Icon(Icons.sms),
-            title: const Text('SMS Notifications'),
-            value: _smsNotificationsEnabled,
-            onChanged: _notificationsEnabled ? (value) {
-              setState(() {
-                _smsNotificationsEnabled = value;
-              });
-            } : null,
-          ),
-          const Divider(height: 1),
-          ListTile(
-            leading: const Icon(Icons.schedule),
-            title: const Text('Reminder Settings'),
-            trailing: const Icon(Icons.chevron_right),
-            enabled: _notificationsEnabled,
-            onTap: _notificationsEnabled ? () {
-              // Navigate to reminder settings
-            } : null,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSecuritySettings() {
-    return Card(
-      elevation: 2,
-      child: Column(
-        children: [
-          ListTile(
-            leading: const Icon(Icons.lock),
-            title: const Text('Change Password'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to change password screen
-            },
-          ),
-          const Divider(height: 1),
-          SwitchListTile(
-            secondary: const Icon(Icons.fingerprint),
-            title: const Text('Biometric Authentication'),
-            value: _biometricEnabled,
-            onChanged: (value) {
-              setState(() {
-                _biometricEnabled = value;
-              });
-            },
-          ),
-          const Divider(height: 1),          ListTile(
-            leading: const Icon(Icons.security),
-            title: const Text('Privacy Settings'),
-            trailing: const Icon(Icons.chevron_right),
-            onTap: () {
-              // Navigate to privacy settings
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildDataManagementSettings() {
-    return Consumer<ConnectivityService>(
-      builder: (context, connectivityService, child) {
-        return Consumer<HealthRecordProvider>(
-          builder: (context, healthRecordProvider, child) {
-            return Card(
-              elevation: 2,
-              child: Column(
-                children: [
-                  ListTile(
-                    leading: const Icon(Icons.cloud_sync),
-                    title: const Text('Sync Status'),
-                    subtitle: Text(
-                      connectivityService.isOnline 
-                          ? 'Online - Data will sync automatically'
-                          : healthRecordProvider.lastSyncTime != null
-                              ? 'Offline - Last synced ${_formatLastSync(healthRecordProvider.lastSyncTime!)}'
-                              : 'Offline - No cached data available',
-                    ),
-                    trailing: connectivityService.isOnline
-                        ? Icon(Icons.cloud_done, color: Colors.green)
-                        : Icon(Icons.cloud_off, color: Colors.orange),
-                  ),
-                  if (connectivityService.isOnline) ...[
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.refresh),
-                      title: const Text('Refresh Data'),
-                      subtitle: const Text('Force sync with server'),
-                      trailing: healthRecordProvider.isLoading
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.chevron_right),
-                      onTap: healthRecordProvider.isLoading
-                          ? null
-                          : () async {
-                              await healthRecordProvider.refreshHealthRecords();
-                              if (mounted) {
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  const SnackBar(
-                                    content: Text('Data refreshed successfully'),
-                                    backgroundColor: Colors.green,
-                                  ),
-                                );
-                              }
-                            },
-                    ),
-                  ],
-                  const Divider(height: 1),
-                  ListTile(
-                    leading: const Icon(Icons.storage),
-                    title: const Text('Cache Information'),
-                    subtitle: Text(
-                      healthRecordProvider.healthRecords.isNotEmpty || healthRecordProvider.encounters.isNotEmpty
-                          ? '${healthRecordProvider.healthRecords.length} health records, ${healthRecordProvider.encounters.length} encounters cached'
-                          : 'No cached data',
-                    ),
-                    trailing: const Icon(Icons.info_outline),
-                  ),
-                  if (healthRecordProvider.healthRecords.isNotEmpty || healthRecordProvider.encounters.isNotEmpty) ...[
-                    const Divider(height: 1),
-                    ListTile(
-                      leading: const Icon(Icons.delete_outline, color: Colors.red),
-                      title: const Text('Clear Cache'),
-                      subtitle: const Text('Remove all locally stored data'),
-                      trailing: const Icon(Icons.chevron_right),
-                      onTap: () => _showClearCacheDialog(healthRecordProvider),
-                    ),
-                  ],
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
-  String _formatLastSync(DateTime lastSync) {
-    final now = DateTime.now();
-    final difference = now.difference(lastSync);
-    
-    if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
-    } else {
-      return 'just now';
-    }
-  }
-
-  void _showClearCacheDialog(HealthRecordProvider provider) {
-    showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: const Text('Clear Cache'),
-          content: const Text(
-            'This will remove all locally stored health records and encounters. '
-            'You will need an internet connection to view your data again. '
-            'Are you sure you want to continue?',
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () async {
-                Navigator.of(context).pop();
-                await provider.clearCache();
-                if (mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(
-                      content: Text('Cache cleared successfully'),
-                      backgroundColor: Colors.green,
-                    ),
-                  );
-                }
-              },
-              child: const Text('Clear', style: TextStyle(color: Colors.red)),
-            ),
-          ],
-        );
-      },
     );
   }
 
   Widget _buildLanguageSettings() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 2,
+      color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
       child: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.language),
-            title: const Text('Language'),
+            leading: Icon(
+              Icons.language,
+              color: isDarkMode
+                  ? const Color(0xFF90CAF9)
+                  : const Color(0xFF2196F3),
+            ),
+            title: Text(
+              'Language',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
             trailing: DropdownButton<String>(
               value: _selectedLanguage,
               underline: const SizedBox(),
+              dropdownColor:
+                  isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
               items: _languages.map((language) {
                 return DropdownMenuItem<String>(
                   value: language,
-                  child: Text(language),
+                  child: Text(
+                    language,
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
                 );
               }).toList(),
               onChanged: (value) {
@@ -429,41 +237,145 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildAboutSettings() {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return Card(
       elevation: 2,
+      color: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
       child: Column(
         children: [
           ListTile(
-            leading: const Icon(Icons.info),
-            title: const Text('About DPHR'),
-            trailing: const Icon(Icons.chevron_right),
+            leading: Icon(
+              Icons.info,
+              color: isDarkMode
+                  ? const Color(0xFF90CAF9)
+                  : const Color(0xFF2196F3),
+            ),
+            title: Text(
+              'About DPHR',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey,
+            ),
             onTap: () {
-              // Navigate to about screen
+              _showAboutDialog(
+                'About DPHR',
+                'Digital Personal Health Records (DPHR) is a comprehensive healthcare management application designed to empower patients with secure access to their medical information. Our platform enables seamless communication between patients and healthcare providers while ensuring complete privacy and data security.',
+              );
             },
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.help),
-            title: const Text('Help & Support'),
-            trailing: const Icon(Icons.chevron_right),
+            leading: Icon(
+              Icons.help,
+              color: isDarkMode
+                  ? const Color(0xFF90CAF9)
+                  : const Color(0xFF2196F3),
+            ),
+            title: Text(
+              'Help & Support',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey,
+            ),
             onTap: () {
-              // Navigate to help screen
+              _showAboutDialog(
+                'Help & Support',
+                'Need assistance? Our support team is here to help you make the most of DPHR. Contact us through the app for technical support, account issues, or general inquiries. We provide 24/7 customer support, comprehensive user guides, and video tutorials to ensure you have the best experience with our platform.',
+              );
             },
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.privacy_tip),
-            title: const Text('Terms & Privacy Policy'),
-            trailing: const Icon(Icons.chevron_right),
+            leading: Icon(
+              Icons.privacy_tip,
+              color: isDarkMode
+                  ? const Color(0xFF90CAF9)
+                  : const Color(0xFF2196F3),
+            ),
+            title: Text(
+              'Terms & Privacy Policy',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            trailing: Icon(
+              Icons.chevron_right,
+              color: isDarkMode ? Colors.grey[400] : Colors.grey,
+            ),
             onTap: () {
-              // Navigate to terms screen
+              _showAboutDialog(
+                'Terms & Privacy Policy',
+                'Your privacy and data security are our top priorities. DPHR complies with HIPAA regulations and international data protection standards. We use end-to-end encryption to protect your health information and never share your personal data with third parties without your explicit consent. Review our complete terms of service and privacy policy for detailed information about data handling and your rights.',
+              );
             },
           ),
           const Divider(height: 1),
           ListTile(
-            leading: const Icon(Icons.update),
-            title: const Text('Version'),
-            trailing: const Text('1.0.0'),
+            leading: Icon(
+              Icons.update,
+              color: isDarkMode
+                  ? const Color(0xFF90CAF9)
+                  : const Color(0xFF2196F3),
+            ),
+            title: Text(
+              'Version',
+              style: TextStyle(
+                color: isDarkMode ? Colors.white : Colors.black,
+              ),
+            ),
+            trailing: Text(
+              '1.0.0',
+              style: TextStyle(
+                color: isDarkMode ? Colors.grey[400] : Colors.grey,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showAboutDialog(String title, String content) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+        title: Text(
+          title,
+          style: TextStyle(
+            color: isDarkMode ? Colors.white : Colors.black,
+          ),
+        ),
+        content: SingleChildScrollView(
+          child: Text(
+            content,
+            style: TextStyle(
+              fontSize: 16,
+              height: 1.5,
+              color: isDarkMode ? Colors.grey[300] : Colors.black,
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text(
+              'OK',
+              style: TextStyle(
+                color: isDarkMode
+                    ? const Color(0xFF90CAF9)
+                    : const Color(0xFF2196F3),
+              ),
+            ),
           ),
         ],
       ),
@@ -471,49 +383,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   Widget _buildLogoutButton(AuthProvider authProvider) {
+    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return ElevatedButton.icon(
-      onPressed: authProvider.isLoading ? null : () {
-        // Show confirmation dialog
-        showDialog(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Logout'),
-            content: const Text('Are you sure you want to logout?'),
-            actions: [
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                },
-                child: const Text('Cancel'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  // Perform logout
-                  Navigator.of(context).pop();
-                  await authProvider.logout();
+      onPressed: authProvider.isLoading
+          ? null
+          : () {
+              // Show confirmation dialog
+              showDialog(
+                context: context,
+                builder: (context) => AlertDialog(
+                  backgroundColor:
+                      isDarkMode ? const Color(0xFF2A2A2A) : Colors.white,
+                  title: Text(
+                    'Logout',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.white : Colors.black,
+                    ),
+                  ),
+                  content: Text(
+                    'Are you sure you want to logout?',
+                    style: TextStyle(
+                      color: isDarkMode ? Colors.grey[300] : Colors.black,
+                    ),
+                  ),
+                  actions: [
+                    TextButton(
+                      onPressed: () {
+                        Navigator.of(context).pop();
+                      },
+                      child: Text(
+                        'Cancel',
+                        style: TextStyle(
+                          color: isDarkMode ? Colors.grey[400] : Colors.grey,
+                        ),
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: () async {
+                        // Perform logout
+                        Navigator.of(context).pop();
+                        await authProvider.logout();
 
-                  if (!mounted) return;
+                        if (!mounted) return;
 
-                  Navigator.of(context).pushAndRemoveUntil(
-                    MaterialPageRoute(builder: (context) => const LoginScreen()),
-                        (route) => false,
-                  );
-                },
-                child: const Text('Logout'),
-              ),
-            ],
-          ),
-        );
-      },
+                        Navigator.of(context).pushAndRemoveUntil(
+                          MaterialPageRoute(
+                              builder: (context) => const LoginScreen()),
+                          (route) => false,
+                        );
+                      },
+                      child: const Text('Logout'),
+                    ),
+                  ],
+                ),
+              );
+            },
       icon: authProvider.isLoading
           ? const SizedBox(
-        height: 20,
-        width: 20,
-        child: CircularProgressIndicator(
-          color: Colors.white,
-          strokeWidth: 2,
-        ),
-      )
+              height: 20,
+              width: 20,
+              child: CircularProgressIndicator(
+                color: Colors.white,
+                strokeWidth: 2,
+              ),
+            )
           : const Icon(Icons.logout),
       label: const Text('Logout'),
       style: ElevatedButton.styleFrom(
