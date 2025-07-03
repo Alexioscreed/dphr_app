@@ -62,6 +62,43 @@ class AuthProvider with ChangeNotifier {
     }
   }
 
+  // Send OTP for registration
+  Future<bool> sendRegistrationOtp(
+      String name, String email, String phoneNumber, String password) async {
+    _setLoading(true);
+    try {
+      await _authService.sendRegistrationOtp(
+          name, email, phoneNumber, password);
+      _error = '';
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Send OTP error: $_error');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
+  // Verify OTP and complete registration
+  Future<bool> verifyOtpAndRegister(String name, String email,
+      String phoneNumber, String password, String otp) async {
+    _setLoading(true);
+    try {
+      await _authService.verifyOtpAndRegister(
+          name, email, phoneNumber, password, otp);
+      _error = '';
+      notifyListeners(); // Notify listeners about successful authentication
+      return true;
+    } catch (e) {
+      _error = e.toString();
+      debugPrint('Verify OTP and register error: $_error');
+      return false;
+    } finally {
+      _setLoading(false);
+    }
+  }
+
   // Login
   Future<bool> login(String email, String password) async {
     _setLoading(true);

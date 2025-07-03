@@ -445,4 +445,169 @@ class AuthService {
       if (_token != null) 'Authorization': 'Bearer $_token',
     };
   }
+
+  // Send OTP for registration
+  Future<bool> sendRegistrationOtp(
+      String name, String email, String phoneNumber, String password) async {
+    try {
+      final url = '${AppConfig.baseApiUrl}/auth/send-otp';
+      debugPrint('Attempting to send OTP at: $url');
+
+      final client = http.Client();
+
+      try {
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'name': name,
+                'email': email,
+                'phoneNumber': phoneNumber,
+                'password': password,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+
+        debugPrint('Send OTP response status: ${response.statusCode}');
+        debugPrint('Send OTP response body: ${response.body}');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final responseData = jsonDecode(response.body);
+          if (responseData['success'] == true) {
+            debugPrint('OTP sent successfully');
+            return true;
+          } else {
+            throw Exception(responseData['message'] ?? 'Failed to send OTP');
+          }
+        } else {
+          String errorMsg;
+          try {
+            final error = jsonDecode(response.body);
+            errorMsg = error['message'] ??
+                'Failed to send OTP with status: ${response.statusCode}';
+          } catch (_) {
+            errorMsg = 'Failed to send OTP with status: ${response.statusCode}';
+          }
+          throw Exception(errorMsg);
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      debugPrint('Send OTP exception: $e');
+
+      // Provide more specific error messages
+      if (e is SocketException) {
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
+      } else if (e is http.ClientException) {
+        throw Exception('Network error: ${e.message}. Please try again later.');
+      } else if (e is TimeoutException) {
+        throw Exception('Connection timed out. Please try again later.');
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  // Verify OTP and complete registration
+  Future<void> verifyOtpAndRegister(String name, String email,
+      String phoneNumber, String password, String otp) async {
+    try {
+      final url = '${AppConfig.baseApiUrl}/auth/verify-otp-register';
+      debugPrint('Attempting to verify OTP and register at: $url');
+
+      final client = http.Client();
+
+      try {
+        final response = await client
+            .post(
+              Uri.parse(url),
+              headers: {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+              },
+              body: jsonEncode({
+                'name': name,
+                'email': email,
+                'phoneNumber': phoneNumber,
+                'password': password,
+                'otp': otp,
+              }),
+            )
+            .timeout(Duration(seconds: AppConfig.connectionTimeout));
+
+        debugPrint('Verify OTP response status: ${response.statusCode}');
+        debugPrint('Verify OTP response body: ${response.body}');
+
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final responseData = jsonDecode(response.body);
+          if (responseData['success'] == true) {
+            final authResponse = responseData['authResponse'];
+
+            // Save token and user data
+            await _saveAuthData(
+              authResponse['token'],
+              User(
+                id: authResponse[
+                    'email'], // Use email as temporary ID since backend doesn't return user ID
+                email: authResponse['email'],
+                name: authResponse['name'],
+                mrn: authResponse['mrn'] ?? '',
+                patientUuid: authResponse['patientUuid'],
+              ),
+            );
+
+            debugPrint('Registration and login successful');
+            return;
+          } else {
+            throw Exception(
+                responseData['message'] ?? 'Failed to verify OTP and register');
+          }
+        } else {
+          String errorMsg;
+          try {
+            final error = jsonDecode(response.body);
+            errorMsg = error['message'] ??
+                'Failed to verify OTP with status: ${response.statusCode}';
+          } catch (_) {
+            errorMsg =
+                'Failed to verify OTP with status: ${response.statusCode}';
+          }
+          throw Exception(errorMsg);
+        }
+      } finally {
+        client.close();
+      }
+    } catch (e) {
+      debugPrint('Verify OTP exception: $e');
+
+      // Provide more specific error messages
+      if (e is SocketException) {
+        throw Exception(
+            'Cannot connect to server. Please check your internet connection and try again.');
+      } else if (e is http.ClientException) {
+        throw Exception('Network error: ${e.message}. Please try again later.');
+      } else if (e is TimeoutException) {
+        throw Exception('Connection timed out. Please try again later.');
+      } else {
+        rethrow;
+      }
+    }
+  }
+
+  // Save token and user data
+  Future<void> _saveAuthData(String token, User user) async {
+    _token = token;
+    _currentUser = user;
+
+    // Save token and user data to SharedPreferences
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(tokenKey, token);
+    await prefs.setString(userKey, jsonEncode(user.toJson()));
+  }
 }
