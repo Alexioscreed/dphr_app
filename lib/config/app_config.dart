@@ -1,7 +1,7 @@
 class AppConfig {
   // Server configuration
   // Change this to your computer's IP address when testing on physical devices
-  static const String serverIP = '192.168.1.3';
+  static const String serverIP = '192.168.1.125';
   static const int serverPort = 8081;
 
   // API URLs

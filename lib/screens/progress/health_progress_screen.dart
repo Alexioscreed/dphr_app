@@ -282,45 +282,58 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
 
     // Create spots from actual measurements data
     final spots = <FlSpot>[];
+    final values = <double>[];
     for (int i = 0; i < measurements.length; i++) {
       final measurement = measurements[i];
       double value = _parseValueFromMeasurement(measurement.value);
       spots.add(FlSpot(i.toDouble(), value));
+      values.add(value);
     }
 
     Color lineColor;
     double minY, maxY;
 
+    // Calculate actual min and max from data
+    double dataMin =
+        values.isNotEmpty ? values.reduce((a, b) => a < b ? a : b) : 0;
+    double dataMax =
+        values.isNotEmpty ? values.reduce((a, b) => a > b ? a : b) : 100;
+
     switch (_selectedMetric) {
       case 'Heart Rate':
         lineColor = Colors.red;
-        minY = 50;
-        maxY = 120;
+        minY = (dataMin - 10).clamp(40, double.infinity);
+        maxY = (dataMax + 10).clamp(60, double.infinity);
         break;
       case 'Blood Glucose':
         lineColor = Colors.purple;
-        minY = 70;
-        maxY = 200;
+        minY = (dataMin - 10).clamp(60, double.infinity);
+        maxY = (dataMax + 20).clamp(80, double.infinity);
         break;
       case 'Weight':
         lineColor = Colors.green;
-        minY = 50;
-        maxY = 100;
+        minY = (dataMin - 5).clamp(40, double.infinity);
+        maxY = (dataMax + 10).clamp(60, double.infinity);
         break;
       case 'Temperature':
         lineColor = Colors.orange;
-        minY = 35;
-        maxY = 42;
+        minY = (dataMin - 1).clamp(34, double.infinity);
+        maxY = (dataMax + 1).clamp(36, double.infinity);
         break;
       case 'Oxygen Saturation':
         lineColor = Colors.blue;
-        minY = 90;
-        maxY = 100;
+        // For oxygen saturation, ensure we have a reasonable range
+        minY = (dataMin - 2).clamp(85, double.infinity);
+        maxY = (dataMax + 2).clamp(dataMin + 5, double.infinity);
+        // Ensure we have at least a 5-point range for better visualization
+        if (maxY - minY < 5) {
+          maxY = minY + 5;
+        }
         break;
       default:
         lineColor = const Color(0xFF2196F3);
-        minY = 0;
-        maxY = 200;
+        minY = (dataMin - 10).clamp(0, double.infinity);
+        maxY = (dataMax + 20).clamp(dataMin + 10, double.infinity);
     }
 
     return Card(
@@ -342,6 +355,7 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
               height: 300,
               child: LineChart(
                 LineChartData(
+                  clipData: FlClipData.all(),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
@@ -456,6 +470,7 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
 
     final systolicSpots = <FlSpot>[];
     final diastolicSpots = <FlSpot>[];
+    final allValues = <double>[];
 
     for (int i = 0; i < measurements.length; i++) {
       final measurement = measurements[i];
@@ -463,7 +478,20 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
       if (bpValues != null) {
         systolicSpots.add(FlSpot(i.toDouble(), bpValues['systolic']!));
         diastolicSpots.add(FlSpot(i.toDouble(), bpValues['diastolic']!));
+        allValues.add(bpValues['systolic']!);
+        allValues.add(bpValues['diastolic']!);
       }
+    }
+
+    // Calculate dynamic bounds for blood pressure
+    double minY = 60; // Default minimum
+    double maxY = 180; // Default maximum
+
+    if (allValues.isNotEmpty) {
+      double dataMin = allValues.reduce((a, b) => a < b ? a : b);
+      double dataMax = allValues.reduce((a, b) => a > b ? a : b);
+      minY = (dataMin - 10).clamp(50, double.infinity);
+      maxY = (dataMax + 10).clamp(minY + 20, double.infinity);
     }
 
     return Card(
@@ -485,10 +513,11 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
               height: 300,
               child: LineChart(
                 LineChartData(
+                  clipData: FlClipData.all(),
                   gridData: FlGridData(
                     show: true,
                     drawVerticalLine: false,
-                    horizontalInterval: 20,
+                    horizontalInterval: (maxY - minY) / 5,
                     getDrawingHorizontalLine: (value) {
                       return FlLine(
                         color: Colors.grey.shade300,
@@ -529,7 +558,7 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
                     leftTitles: AxisTitles(
                       sideTitles: SideTitles(
                         showTitles: true,
-                        interval: 20,
+                        interval: (maxY - minY) / 5,
                         getTitlesWidget: (value, meta) {
                           return Text(
                             value.toInt().toString(),
@@ -549,8 +578,8 @@ class _HealthProgressScreenState extends State<HealthProgressScreen> {
                   ),
                   minX: 0,
                   maxX: (measurements.length - 1).toDouble(),
-                  minY: 60,
-                  maxY: 180,
+                  minY: minY,
+                  maxY: maxY,
                   lineBarsData: [
                     // Systolic line (red)
                     LineChartBarData(
