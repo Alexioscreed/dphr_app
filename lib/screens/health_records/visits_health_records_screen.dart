@@ -25,7 +25,6 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
     'Last Year',
     'Last 2 Years'
   ];
-  String _selectedView = 'visits'; // 'visits', 'timeline', 'summary'
 
   @override
   void initState() {
@@ -235,23 +234,9 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
 
   Widget _buildMainContent(
       VisitsHealthProvider visitsProvider, PatientHealthRecords healthRecords) {
-    switch (_selectedView) {
-      case 'summary':
-        return HealthSummaryView(
-          healthRecords: healthRecords,
-          selectedFilter: _selectedFilter,
-        );
-      case 'timeline':
-        return HealthTimelineView(
-          healthRecords: healthRecords,
-          selectedFilter: _selectedFilter,
-        );
-      case 'visits':
-      default:
-        return VisitsListView(
-          visits: healthRecords.visits ?? [],
-          selectedFilter: _selectedFilter,
-        );
-    }
+    return VisitsListView(
+      visits: healthRecords.visits ?? [],
+      selectedFilter: _selectedFilter,
+    );
   }
 }

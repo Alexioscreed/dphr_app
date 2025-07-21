@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../../providers/health_record_provider.dart';
@@ -28,7 +27,6 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
     'Laboratory',
     'Urgent Care'
   ];
-  String _selectedView = 'grouped'; // 'grouped' or 'list'
   @override
   void initState() {
     super.initState();
@@ -69,9 +67,7 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
                 children: [
                   _buildFilterChips(),
                   Expanded(
-                    child: _selectedView == 'grouped'
-                        ? _buildGroupedRecordsList()
-                        : _buildHealthRecordsList(),
+                    child: _buildGroupedRecordsList(),
                   ),
                 ],
               ),
@@ -478,137 +474,5 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
     } else {
       return DateFormat('EEEE, MMMM d, y').format(date);
     }
-  }
-
-  Widget _buildHealthRecordsList() {
-    return Consumer<HealthRecordProvider>(
-      builder: (context, provider, child) {
-        if (provider.isLoading) {
-          return const Center(
-            child: CircularProgressIndicator(),
-          );
-        }
-
-        if (provider.error.isNotEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(
-                  Icons.error_outline,
-                  color: Colors.red,
-                  size: 60,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Error: ${provider.error}',
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 16),
-                ElevatedButton(
-                  onPressed: _fetchHealthRecords,
-                  child: const Text('Retry'),
-                ),
-              ],
-            ),
-          );
-        }
-
-        final records = provider.healthRecords;
-
-        if (records.isEmpty) {
-          return const Center(
-            child: Text('No health records found'),
-          );
-        }
-
-        // Filter records
-        final filteredRecords = _selectedFilter == 'All'
-            ? records
-            : records
-                .where((record) => record.type == _selectedFilter)
-                .toList();
-
-        if (filteredRecords.isEmpty) {
-          return Center(
-            child: Text('No ${_selectedFilter.toLowerCase()} records found'),
-          );
-        }
-
-        return RefreshIndicator(
-          onRefresh: _fetchHealthRecords,
-          child: ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: filteredRecords.length,
-            itemBuilder: (context, index) {
-              final record = filteredRecords[index];
-
-              return Card(
-                margin: const EdgeInsets.only(bottom: 16.0),
-                elevation: 2,
-                child: ListTile(
-                  contentPadding: const EdgeInsets.all(16.0),
-                  title: Text(
-                    record.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 16,
-                    ),
-                  ),
-                  subtitle: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 8),
-                      Text('Date: ${_formatDate(record.date)}'),
-                      const SizedBox(height: 4),
-                      Text('Provider: ${record.provider}'),
-                      const SizedBox(height: 4),
-                      Text('Type: ${record.type}'),
-                      const SizedBox(height: 8),
-                      Row(
-                        children: [
-                          const Icon(Icons.attach_file, size: 16),
-                          const SizedBox(width: 4),
-                          Text('${record.attachments.length} attachment(s)'),
-                        ],
-                      ),
-                    ],
-                  ),
-                  trailing: const Icon(Icons.chevron_right),
-                  onTap: () {
-                    // Find the corresponding encounter
-                    final provider = Provider.of<HealthRecordProvider>(context,
-                        listen: false);
-                    final encounter = provider.encounters
-                        .where((e) => e.id.toString() == record.id)
-                        .firstOrNull;
-
-                    if (encounter != null && encounter.id != null) {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => EnhancedEncounterDetailScreen(
-                              encounterId: encounter.id!),
-                        ),
-                      );
-                    } else {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              HealthRecordDetailScreen(recordId: record.id),
-                        ),
-                      );
-                    }
-                  },
-                ),
-              );
-            },
-          ),
-        );
-      },
-    );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day}/${date.month}/${date.year}';
   }
 }
