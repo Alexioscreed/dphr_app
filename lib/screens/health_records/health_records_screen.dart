@@ -9,7 +9,6 @@ import '../../models/health_record.dart';
 import 'health_record_detail_screen.dart';
 import 'enhanced_encounter_detail_screen.dart';
 import '../../models/encounter.dart';
-import '../admin/testing_admin_screen.dart';
 
 class HealthRecordsScreen extends StatefulWidget {
   const HealthRecordsScreen({Key? key}) : super(key: key);
@@ -65,91 +64,9 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
                 backgroundColor:
                     isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
                 foregroundColor: isDarkMode ? Colors.white : Colors.black,
-                actions: [
-                  // Offline indicator
-                  if (connectivityService.isOffline)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.orange,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          const Icon(Icons.cloud_off,
-                              size: 16, color: Colors.white),
-                          const SizedBox(width: 4),
-                          const Text('Offline',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 12)),
-                        ],
-                      ),
-                    ),                  // Refresh button
-                  IconButton(
-                    onPressed: connectivityService.isOnline
-                        ? () => healthRecordProvider.refreshHealthRecords()
-                        : null,
-                    icon: const Icon(Icons.refresh),
-                    tooltip: connectivityService.isOnline
-                        ? 'Refresh data'
-                        : 'No internet connection',
-                  ),
-                  // Debug/Testing button (only in debug mode)
-                  if (kDebugMode)
-                    IconButton(
-                      onPressed: () {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) => const TestingAdminScreen(),
-                          ),
-                        );
-                      },
-                      icon: const Icon(Icons.bug_report),
-                      tooltip: 'Testing Admin',
-                    ),
-                  IconButton(
-                    onPressed: () {
-                      setState(() {
-                        _selectedView =
-                            _selectedView == 'grouped' ? 'list' : 'grouped';
-                      });
-                    },
-                    icon: Icon(_selectedView == 'grouped'
-                        ? Icons.view_list
-                        : Icons.view_module),
-                    tooltip: _selectedView == 'grouped'
-                        ? 'List View'
-                        : 'Grouped View',
-                  ),
-                ],
               ),
               body: Column(
                 children: [
-                  // Offline banner with last sync info
-                  if (connectivityService.isOffline &&
-                      healthRecordProvider.lastSyncTime != null)
-                    Container(
-                      width: double.infinity,
-                      color: Colors.orange.withOpacity(0.1),
-                      padding: const EdgeInsets.all(12),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.info_outline,
-                              color: Colors.orange, size: 20),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: Text(
-                              'Showing cached data from ${_formatLastSync(healthRecordProvider.lastSyncTime!)}',
-                              style: const TextStyle(
-                                  color: Colors.orange, fontSize: 14),
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
                   _buildFilterChips(),
                   Expanded(
                     child: _selectedView == 'grouped'
@@ -163,21 +80,6 @@ class _HealthRecordsScreenState extends State<HealthRecordsScreen> {
         );
       },
     );
-  }
-
-  String _formatLastSync(DateTime lastSync) {
-    final now = DateTime.now();
-    final difference = now.difference(lastSync);
-
-    if (difference.inDays > 0) {
-      return '${difference.inDays} day${difference.inDays == 1 ? '' : 's'} ago';
-    } else if (difference.inHours > 0) {
-      return '${difference.inHours} hour${difference.inHours == 1 ? '' : 's'} ago';
-    } else if (difference.inMinutes > 0) {
-      return '${difference.inMinutes} minute${difference.inMinutes == 1 ? '' : 's'} ago';
-    } else {
-      return 'just now';
-    }
   }
 
   Widget _buildFilterChips() {

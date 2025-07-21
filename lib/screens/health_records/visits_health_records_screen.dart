@@ -5,7 +5,6 @@ import '../../providers/auth_provider.dart';
 import '../../services/connectivity_service.dart';
 import '../../models/patient_health_records.dart';
 import '../../widgets/visits_health_widgets.dart';
-import '../enhanced_health_records_screen.dart';
 
 class VisitsHealthRecordsScreen extends StatefulWidget {
   const VisitsHealthRecordsScreen({Key? key}) : super(key: key);
@@ -64,108 +63,8 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
                 backgroundColor:
                     isDarkMode ? const Color(0xFF1E1E1E) : Colors.white,
                 foregroundColor: isDarkMode ? Colors.white : Colors.black,
-                actions: [
-                  // Connection status indicator
-                  if (visitsProvider.connectionStatus != null)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: visitsProvider.connectionStatus == 'Connected'
-                            ? Colors.green
-                            : Colors.orange,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                              visitsProvider.connectionStatus == 'Connected'
-                                  ? Icons.cloud_done
-                                  : Icons.cloud_off,
-                              size: 16,
-                              color: Colors.white),
-                          const SizedBox(width: 4),
-                          Text('iCare: ${visitsProvider.connectionStatus}',
-                              style: const TextStyle(
-                                  color: Colors.white, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  // Offline indicator
-                  if (connectivityService.isOffline)
-                    Container(
-                      margin: const EdgeInsets.only(right: 8),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.red,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(Icons.wifi_off, size: 16, color: Colors.white),
-                          SizedBox(width: 4),
-                          Text('Offline',
-                              style:
-                                  TextStyle(color: Colors.white, fontSize: 12)),
-                        ],
-                      ),
-                    ),
-                  // Refresh button
-                  IconButton(
-                    onPressed: connectivityService.isOnline
-                        ? () => visitsProvider.refreshHealthRecords()
-                        : null,
-                    icon: const Icon(Icons.refresh),
-                    tooltip: connectivityService.isOnline
-                        ? 'Refresh data'
-                        : 'No internet connection',
-                  ), // View toggle
-                  PopupMenuButton<String>(
-                    onSelected: (value) {
-                      if (value == 'enhanced') {
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                const EnhancedHealthRecordsScreen(),
-                          ),
-                        );
-                      } else {
-                        setState(() {
-                          _selectedView = value;
-                        });
-                      }
-                    },
-                    itemBuilder: (context) => [
-                      const PopupMenuItem(
-                          value: 'visits', child: Text('Visits View')),
-                      const PopupMenuItem(
-                          value: 'timeline', child: Text('Timeline View')),
-                      const PopupMenuItem(
-                          value: 'summary', child: Text('Summary View')),
-                      const PopupMenuDivider(),
-                      PopupMenuItem(
-                        value: 'enhanced',
-                        child: Row(
-                          children: [
-                            Icon(Icons.upgrade,
-                                size: 16, color: Colors.blue[700]),
-                            const SizedBox(width: 8),
-                            const Text('Enhanced View'),
-                          ],
-                        ),
-                      ),
-                    ],
-                    child: const Icon(Icons.view_module),
-                  ),
-                ],
               ),
               body: _buildBody(visitsProvider, connectivityService),
-              floatingActionButton:
-                  _buildFloatingActionButton(context, visitsProvider),
             );
           },
         );
@@ -354,17 +253,5 @@ class _VisitsHealthRecordsScreenState extends State<VisitsHealthRecordsScreen> {
           selectedFilter: _selectedFilter,
         );
     }
-  }
-
-  Widget? _buildFloatingActionButton(
-      BuildContext context, VisitsHealthProvider visitsProvider) {
-    return FloatingActionButton.extended(
-      onPressed: () {
-        _fetchHealthRecords();
-      },
-      tooltip: 'Refresh Health Records',
-      icon: const Icon(Icons.refresh),
-      label: const Text('Refresh'),
-    );
   }
 }

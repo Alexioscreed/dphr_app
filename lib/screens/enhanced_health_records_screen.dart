@@ -557,12 +557,6 @@ class _EnhancedHealthRecordsScreenState
     return Scaffold(
       appBar: AppBar(
         title: const Text('Enhanced Health Records'),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            onPressed: _loadEnhancedHealthRecords,
-          ),
-        ],
         bottom: TabBar(
           controller: _tabController,
           tabs: const [
