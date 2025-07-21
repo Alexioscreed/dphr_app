@@ -69,7 +69,7 @@ class ThemeProvider with ChangeNotifier {
         ),
       ),
       scaffoldBackgroundColor: Colors.white,
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
@@ -124,7 +124,7 @@ class ThemeProvider with ChangeNotifier {
         ),
       ),
       scaffoldBackgroundColor: const Color(0xFF121212),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(12),
