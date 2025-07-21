@@ -26,22 +26,4 @@ class ApiConstants {
     'Vaccination',
     'Chronic Care',
   ];
-
-  // Diagnosis Certainty
-  static const List<String> diagnosisCertainty = [
-    'CONFIRMED',
-    'PRESUMED',
-    'PROVISIONAL',
-    'DIFFERENTIAL',
-  ];
-
-  // Referral Status
-  static const List<String> referralStatus = [
-    'PENDING',
-    'ACCEPTED',
-    'REJECTED',
-    'COMPLETED',
-    'CANCELLED',
-  ];
 }
-
