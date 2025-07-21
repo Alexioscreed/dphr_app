@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/vital_measurements_provider.dart';
-import '../../providers/notification_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../models/vital_measurement.dart';
-import '../../services/health_analytics_service.dart';
 import '../../services/api_service.dart';
 import 'package:fl_chart/fl_chart.dart';
 

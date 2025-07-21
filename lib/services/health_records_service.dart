@@ -1,13 +1,11 @@
 import 'package:flutter/foundation.dart';
 import '../services/api_service.dart';
-import '../services/auth_service.dart';
 import '../models/patient_health_records.dart';
 
 class HealthRecordsService {
   final ApiService _apiService;
-  final AuthService _authService;
 
-  HealthRecordsService(this._apiService, this._authService);
+  HealthRecordsService(this._apiService);
 
   /// Get comprehensive health records for the authenticated user
   Future<Map<String, dynamic>> getMyHealthRecords() async {

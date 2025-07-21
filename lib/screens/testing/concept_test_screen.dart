@@ -280,16 +280,17 @@ class _ConceptTestScreenState extends State<ConceptTestScreen> {
                       ...(_encounters.take(5).map((encounter) => Card(
                             color: Colors.green[50],
                             child: ListTile(
-                              title: Text(
-                                  encounter.encounterType ?? 'Unknown Type'),
+                              title: Text(encounter.encounterType.isEmpty
+                                  ? 'Unknown Type'
+                                  : encounter.encounterType),
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                      'Date: ${encounter.encounterDateTime?.toString() ?? 'Unknown'}'),
-                                  if (encounter.provider != null)
+                                      'Date: ${encounter.encounterDateTime.toString()}'),
+                                  if (encounter.provider.isNotEmpty)
                                     Text('Provider: ${encounter.provider}'),
-                                  if (encounter.diagnosis != null)
+                                  if (encounter.diagnosis.isNotEmpty)
                                     Text('Diagnosis: ${encounter.diagnosis}'),
                                 ],
                               ),

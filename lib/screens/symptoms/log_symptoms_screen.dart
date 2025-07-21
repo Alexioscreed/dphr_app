@@ -19,7 +19,6 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
   final _notesController = TextEditingController();
   bool _isLoading = false;
   bool _showConfirmation = false;
-  Symptom? _savedSymptom;
 
   @override
   void dispose() {
@@ -63,7 +62,6 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
         await vitalProvider.addSymptom(symptom, context);
 
         setState(() {
-          _savedSymptom = symptom;
           _showConfirmation = true;
           _isLoading = false;
         });
@@ -118,7 +116,6 @@ class _LogSymptomsScreenState extends State<LogSymptomsScreen> {
       _severityController.clear();
       _notesController.clear();
       _showConfirmation = false;
-      _savedSymptom = null;
     });
   }
 

@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../services/health_records_service.dart';
-import '../../services/auth_service.dart';
 import '../../services/api_service.dart';
 import '../../widgets/formatted_visit_summary_widget.dart';
 
@@ -39,7 +38,6 @@ class _FormattedVisitScreenState extends State<FormattedVisitScreen> {
     if (_healthRecordsService == null) {
       _healthRecordsService = HealthRecordsService(
         context.read<ApiService>(),
-        context.read<AuthService>(),
       );
       _loadFormattedSummary();
     }

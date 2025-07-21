@@ -63,9 +63,9 @@ void main() async {
               PrescriptionService(apiService),
         ),
         // Initialize HealthRecordsService with dependencies
-        ProxyProvider2<ApiService, AuthService, HealthRecordsService>(
-          update: (context, apiService, authService, previous) =>
-              HealthRecordsService(apiService, authService),
+        ProxyProvider<ApiService, HealthRecordsService>(
+          update: (context, apiService, previous) =>
+              HealthRecordsService(apiService),
         ), // Initialize providers with dependencies
         ChangeNotifierProxyProvider<AuthService, AuthProvider>(
           create: (context) =>

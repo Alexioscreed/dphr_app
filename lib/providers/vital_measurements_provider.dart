@@ -3,7 +3,6 @@ import 'package:provider/provider.dart';
 import '../models/vital_measurement.dart';
 import '../models/symptom.dart';
 import '../services/api_service.dart';
-import '../providers/auth_provider.dart';
 import '../providers/notification_provider.dart' as notifications;
 
 class VitalMeasurementsProvider with ChangeNotifier {
