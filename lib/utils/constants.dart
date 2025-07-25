@@ -8,9 +8,12 @@ class ApiConstants {
   // Facility name
   static const String facilityName = 'DPHR Health Facility';
 
-  // API credentials (these would typically be stored securely)
-  static const String apiUsername = 'api_username';
-  static const String apiPassword = 'api_password';
+  // API credentials - These should be moved to environment configuration
+  // TODO: Implement secure credential storage for production
+  static const String apiUsername =
+      String.fromEnvironment('HDU_API_USERNAME', defaultValue: 'api_username');
+  static const String apiPassword =
+      String.fromEnvironment('HDU_API_PASSWORD', defaultValue: 'api_password');
 
   // ID Types
   static const List<String> idTypes = ['MRN', 'NIDA', 'HCRCODE', 'NHIF'];
